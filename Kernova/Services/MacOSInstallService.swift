@@ -80,7 +80,6 @@ final class MacOSInstallService {
             let fraction = progress.fractionCompleted
             Task { @MainActor in
                 progressHandler(fraction)
-                instance.installProgress = fraction
             }
         }
 

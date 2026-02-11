@@ -21,17 +21,26 @@ struct IPSWService: Sendable {
     /// - Parameters:
     ///   - restoreImage: The restore image metadata to download.
     ///   - destinationURL: The local file URL to save the IPSW to.
-    ///   - progressHandler: Called periodically with the download progress (0.0–1.0).
+    ///   - progressHandler: Called periodically with (fraction, totalBytesWritten, totalBytesExpectedToWrite).
     func downloadRestoreImage(
         _ restoreImage: VZMacOSRestoreImage,
         to destinationURL: URL,
-        progressHandler: @MainActor @Sendable @escaping (Double) -> Void
+        progressHandler: @MainActor @Sendable @escaping (Double, Int64, Int64) -> Void
     ) async throws {
         let downloadURL = restoreImage.url
 
         Self.logger.info("Downloading restore image from \(downloadURL)")
 
-        let (tempURL, _) = try await URLSession.shared.download(from: downloadURL, delegate: DownloadDelegate(progressHandler: progressHandler))
+        let tempURL: URL = try await withCheckedThrowingContinuation { continuation in
+            let delegate = SessionDelegate(progressHandler: progressHandler, continuation: continuation)
+            let session = URLSession(
+                configuration: .default,
+                delegate: delegate,
+                delegateQueue: nil
+            )
+            delegate.session = session
+            session.downloadTask(with: downloadURL).resume()
+        }
 
         // Move the downloaded file to the destination
         if FileManager.default.fileExists(atPath: destinationURL.path) {
@@ -49,13 +58,20 @@ struct IPSWService: Sendable {
     #endif
 }
 
-// MARK: - Download Delegate
+// MARK: - Session Delegate
 
-private final class DownloadDelegate: NSObject, URLSessionDownloadDelegate, @unchecked Sendable {
-    let progressHandler: @MainActor @Sendable (Double) -> Void
+/// Session-level delegate that reliably receives download progress callbacks.
+private final class SessionDelegate: NSObject, URLSessionDownloadDelegate, @unchecked Sendable {
+    let progressHandler: @MainActor @Sendable (Double, Int64, Int64) -> Void
+    private var continuation: CheckedContinuation<URL, any Error>?
+    var session: URLSession?
 
-    init(progressHandler: @MainActor @Sendable @escaping (Double) -> Void) {
+    init(
+        progressHandler: @MainActor @Sendable @escaping (Double, Int64, Int64) -> Void,
+        continuation: CheckedContinuation<URL, any Error>
+    ) {
         self.progressHandler = progressHandler
+        self.continuation = continuation
     }
 
     func urlSession(
@@ -69,7 +85,7 @@ private final class DownloadDelegate: NSObject, URLSessionDownloadDelegate, @unc
         let fraction = Double(totalBytesWritten) / Double(totalBytesExpectedToWrite)
         let handler = progressHandler
         Task { @MainActor in
-            handler(fraction)
+            handler(fraction, totalBytesWritten, totalBytesExpectedToWrite)
         }
     }
 
@@ -78,7 +94,29 @@ private final class DownloadDelegate: NSObject, URLSessionDownloadDelegate, @unc
         downloadTask: URLSessionDownloadTask,
         didFinishDownloadingTo location: URL
     ) {
-        // Handled by the async download call
+        // Move file to a temp location that won't be cleaned up when the session invalidates
+        let tempURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString + ".ipsw")
+        do {
+            try FileManager.default.moveItem(at: location, to: tempURL)
+            continuation?.resume(returning: tempURL)
+        } catch {
+            continuation?.resume(throwing: error)
+        }
+        continuation = nil
+        self.session?.finishTasksAndInvalidate()
+    }
+
+    func urlSession(
+        _ session: URLSession,
+        task: URLSessionTask,
+        didCompleteWithError error: (any Error)?
+    ) {
+        if let error {
+            continuation?.resume(throwing: error)
+            continuation = nil
+            self.session?.finishTasksAndInvalidate()
+        }
     }
 }
 

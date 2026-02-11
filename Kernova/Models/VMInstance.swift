@@ -17,6 +17,9 @@ final class VMInstance: Identifiable {
     /// Installation progress (0.0–1.0) when installing macOS.
     var installProgress: Double = 0
 
+    /// Detailed status text shown below the progress bar during installation.
+    var installStatusDetail: String = ""
+
     /// Error message if the VM entered an error state.
     var errorMessage: String?
 

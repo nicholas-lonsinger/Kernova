@@ -75,10 +75,12 @@ final class VMLibraryViewModel {
             instances.append(instance)
             selectedID = instance.id
 
-            // For macOS guests, start installation
+            // For macOS guests, start installation (fire-and-forget so wizard can dismiss)
             #if arch(arm64)
             if config.guestOS == .macOS {
-                await installMacOS(on: instance, wizard: wizard)
+                Task {
+                    await installMacOS(on: instance, wizard: wizard)
+                }
             }
             #endif
 
@@ -93,6 +95,8 @@ final class VMLibraryViewModel {
     #if arch(arm64)
     private func installMacOS(on instance: VMInstance, wizard: VMCreationViewModel) async {
         do {
+            instance.status = .installing
+            instance.installStatusDetail = "Fetching restore image info…"
             let ipswURL: URL
 
             switch wizard.ipswSource {
@@ -102,8 +106,11 @@ final class VMLibraryViewModel {
                 try await ipswService.downloadRestoreImage(
                     restoreImage,
                     to: instance.restoreImageURL
-                ) { progress in
+                ) { progress, bytesWritten, totalBytes in
                     instance.installProgress = progress * 0.3 // First 30% is download
+                    let written = Self.formatBytes(bytesWritten)
+                    let total = Self.formatBytes(totalBytes)
+                    instance.installStatusDetail = "Downloading macOS Image: \(written) / \(total)"
                 }
                 ipswURL = instance.restoreImageURL
 
@@ -113,20 +120,33 @@ final class VMLibraryViewModel {
                 } else {
                     throw IPSWError.noDownloadURL
                 }
+                instance.installProgress = 0.3
+                instance.installStatusDetail = "Installing macOS…"
             }
 
             // Run macOS installation
+            instance.installStatusDetail = "Installing macOS…"
             try await installService.install(
                 into: instance,
                 restoreImageURL: ipswURL
             ) { @MainActor progress in
                 instance.installProgress = 0.3 + (progress * 0.7) // Last 70% is install
+                instance.installStatusDetail = "Installing macOS: \(Int(progress * 100))%"
             }
         } catch {
             instance.status = .error
             instance.errorMessage = error.localizedDescription
             presentError(error)
         }
+    }
+
+    private static func formatBytes(_ bytes: Int64) -> String {
+        let gb = Double(bytes) / 1_073_741_824
+        if gb >= 1.0 {
+            return String(format: "%.1f GB", gb)
+        }
+        let mb = Double(bytes) / 1_048_576
+        return String(format: "%.1f MB", mb)
     }
     #endif
 

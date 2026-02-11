@@ -39,13 +39,19 @@ struct VMDetailView: View {
     private var installProgressView: some View {
         VStack(spacing: 16) {
             ProgressView(value: instance.installProgress) {
-                Text("Installing macOS...")
+                Text("Installing macOS…")
                     .font(.headline)
             } currentValueLabel: {
                 Text("\(Int(instance.installProgress * 100))%")
             }
             .progressViewStyle(.linear)
             .frame(maxWidth: 400)
+
+            if !instance.installStatusDetail.isEmpty {
+                Text(instance.installStatusDetail)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
