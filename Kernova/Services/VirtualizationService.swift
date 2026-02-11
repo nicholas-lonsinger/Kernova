@@ -35,7 +35,7 @@ final class VirtualizationService {
             // If a save file exists, restore from it instead of cold booting
             if instance.hasSaveFile {
                 instance.status = .restoring
-                try await vm.restoreMachineState(from: instance.saveFileURL)
+                try await restoreMachineState(vm, from: instance.saveFileURL)
                 try await vm.resume()
 
                 // Remove the save file after successful restore
@@ -66,12 +66,12 @@ final class VirtualizationService {
     }
 
     /// Immediately terminates the virtual machine.
-    func forceStop(_ instance: VMInstance) throws {
+    func forceStop(_ instance: VMInstance) async throws {
         guard let vm = instance.virtualMachine else {
             throw VirtualizationError.noVirtualMachine
         }
 
-        vm.stop()
+        try await vm.stop()
         instance.status = .stopped
         instance.virtualMachine = nil
         Self.logger.info("Force-stopped VM '\(instance.name)'")
@@ -116,7 +116,7 @@ final class VirtualizationService {
             try await vm.pause()
         }
 
-        try await vm.saveMachineState(to: instance.saveFileURL)
+        try await saveMachineState(vm, to: instance.saveFileURL)
         instance.status = .paused
         Self.logger.info("Saved state for VM '\(instance.name)'")
     }
@@ -132,13 +132,41 @@ final class VirtualizationService {
         }
 
         instance.status = .restoring
-        try await vm.restoreMachineState(from: instance.saveFileURL)
+        try await restoreMachineState(vm, from: instance.saveFileURL)
         try await vm.resume()
         instance.status = .running
 
         // Remove save file after successful restore
         try? FileManager.default.removeItem(at: instance.saveFileURL)
         Self.logger.info("Restored state for VM '\(instance.name)'")
+    }
+
+    // MARK: - Private Async Wrappers
+
+    private func saveMachineState(_ vm: VZVirtualMachine, to url: URL) async throws {
+        nonisolated(unsafe) let vm = vm
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, any Error>) in
+            vm.saveMachineStateTo(url: url) { error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else {
+                    continuation.resume()
+                }
+            }
+        }
+    }
+
+    private func restoreMachineState(_ vm: VZVirtualMachine, from url: URL) async throws {
+        nonisolated(unsafe) let vm = vm
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, any Error>) in
+            vm.restoreMachineStateFrom(url: url) { error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else {
+                    continuation.resume()
+                }
+            }
+        }
     }
 }
 

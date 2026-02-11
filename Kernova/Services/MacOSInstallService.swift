@@ -30,7 +30,7 @@ final class MacOSInstallService {
     func install(
         into instance: VMInstance,
         restoreImageURL: URL,
-        progressHandler: @escaping (Double) -> Void
+        progressHandler: @MainActor @Sendable @escaping (Double) -> Void
     ) async throws {
         instance.status = .installing
 
@@ -114,7 +114,8 @@ final class MacOSInstallService {
         // Create auxiliary storage
         _ = try VZMacAuxiliaryStorage(
             creatingStorageAt: instance.auxiliaryStorageURL,
-            hardwareModel: hardwareModel
+            hardwareModel: hardwareModel,
+            options: []
         )
 
         Self.logger.info("Created platform files for '\(instance.name)'")
@@ -123,11 +124,7 @@ final class MacOSInstallService {
     // MARK: - Helpers
 
     private func loadRestoreImage(from url: URL) async throws -> VZMacOSRestoreImage {
-        try await withCheckedThrowingContinuation { continuation in
-            VZMacOSRestoreImage.load(from: url) { result in
-                continuation.resume(with: result)
-            }
-        }
+        try await VZMacOSRestoreImage.image(from: url)
     }
     #endif
 }

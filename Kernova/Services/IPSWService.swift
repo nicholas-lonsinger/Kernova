@@ -13,11 +13,7 @@ struct IPSWService: Sendable {
     #if arch(arm64)
     func fetchLatestSupportedImage() async throws -> VZMacOSRestoreImage {
         Self.logger.info("Fetching latest supported macOS restore image...")
-        return try await withCheckedThrowingContinuation { continuation in
-            VZMacOSRestoreImage.fetchLatestSupported { result in
-                continuation.resume(with: result)
-            }
-        }
+        return try await VZMacOSRestoreImage.latestSupported
     }
 
     /// Downloads a macOS restore image to the specified URL.
@@ -31,9 +27,7 @@ struct IPSWService: Sendable {
         to destinationURL: URL,
         progressHandler: @MainActor @Sendable @escaping (Double) -> Void
     ) async throws {
-        guard let downloadURL = restoreImage.url else {
-            throw IPSWError.noDownloadURL
-        }
+        let downloadURL = restoreImage.url
 
         Self.logger.info("Downloading restore image from \(downloadURL)")
 
@@ -50,11 +44,7 @@ struct IPSWService: Sendable {
 
     /// Loads a restore image from a local IPSW file.
     func loadRestoreImage(from url: URL) async throws -> VZMacOSRestoreImage {
-        return try await withCheckedThrowingContinuation { continuation in
-            VZMacOSRestoreImage.load(from: url) { result in
-                continuation.resume(with: result)
-            }
-        }
+        try await VZMacOSRestoreImage.image(from: url)
     }
     #endif
 }

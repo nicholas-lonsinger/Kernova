@@ -119,7 +119,7 @@ final class VMLibraryViewModel {
             try await installService.install(
                 into: instance,
                 restoreImageURL: ipswURL
-            ) { progress in
+            ) { @MainActor progress in
                 instance.installProgress = 0.3 + (progress * 0.7) // Last 70% is install
             }
         } catch {
@@ -148,9 +148,9 @@ final class VMLibraryViewModel {
         }
     }
 
-    func forceStop(_ instance: VMInstance) {
+    func forceStop(_ instance: VMInstance) async {
         do {
-            try virtualizationService.forceStop(instance)
+            try await virtualizationService.forceStop(instance)
         } catch {
             presentError(error)
         }

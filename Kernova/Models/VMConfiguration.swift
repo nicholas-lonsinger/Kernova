@@ -3,7 +3,7 @@ import Foundation
 /// Persistent configuration for a virtual machine.
 ///
 /// This type is serialized to `config.json` inside each VM bundle directory.
-struct VMConfiguration: Codable, Identifiable, Sendable {
+struct VMConfiguration: Codable, Identifiable, Sendable, Equatable {
 
     // MARK: - Identity
 

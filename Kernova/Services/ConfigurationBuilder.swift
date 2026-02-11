@@ -61,7 +61,7 @@ struct ConfigurationBuilder: Sendable {
 
         // Auxiliary storage
         let auxStorageURL = bundleURL.appendingPathComponent("AuxiliaryStorage")
-        platform.auxiliaryStorage = try VZMacAuxiliaryStorage(contentsOf: auxStorageURL)
+        platform.auxiliaryStorage = VZMacAuxiliaryStorage(contentsOf: auxStorageURL)
 
         // Hardware model
         if let modelData = config.hardwareModelData,
@@ -120,9 +120,9 @@ struct ConfigurationBuilder: Sendable {
         let efiVariableStoreURL = bundleURL.appendingPathComponent("EFIVariableStore")
         let variableStore: VZEFIVariableStore
         if FileManager.default.fileExists(atPath: efiVariableStoreURL.path) {
-            variableStore = try VZEFIVariableStore(contentsOf: efiVariableStoreURL)
+            variableStore = VZEFIVariableStore(url: efiVariableStoreURL)
         } else {
-            variableStore = try VZEFIVariableStore(creatingVariableStoreAt: efiVariableStoreURL)
+            variableStore = try VZEFIVariableStore(creatingVariableStoreAt: efiVariableStoreURL, options: [])
         }
 
         let bootLoader = VZEFIBootLoader()

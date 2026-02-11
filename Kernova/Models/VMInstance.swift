@@ -8,6 +8,7 @@ final class VMInstance: Identifiable {
 
     // MARK: - Properties
 
+    let instanceID: UUID
     var configuration: VMConfiguration
     var status: VMStatus
     var virtualMachine: VZVirtualMachine?
@@ -19,7 +20,7 @@ final class VMInstance: Identifiable {
     /// Error message if the VM entered an error state.
     var errorMessage: String?
 
-    var id: UUID { configuration.id }
+    nonisolated var id: UUID { instanceID }
     var name: String { configuration.name }
 
     // MARK: - Delegate
@@ -29,6 +30,7 @@ final class VMInstance: Identifiable {
     // MARK: - Initializer
 
     init(configuration: VMConfiguration, bundleURL: URL, status: VMStatus = .stopped) {
+        self.instanceID = configuration.id
         self.configuration = configuration
         self.bundleURL = bundleURL
         self.status = status
