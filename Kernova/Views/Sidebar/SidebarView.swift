@@ -17,16 +17,6 @@ struct SidebarView: View {
             }
         }
         .navigationSplitViewColumnWidth(min: 200, ideal: 250, max: 350)
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    viewModel.showCreationWizard = true
-                } label: {
-                    Label("New VM", systemImage: "plus")
-                }
-                .keyboardShortcut("n", modifiers: .command)
-            }
-        }
     }
 
     @ViewBuilder

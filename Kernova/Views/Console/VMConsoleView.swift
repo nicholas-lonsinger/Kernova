@@ -34,6 +34,7 @@ struct VMConsoleView: View {
             } label: {
                 Label("Pause", systemImage: "pause.fill")
             }
+            .help("Pause the virtual machine")
         }
 
         if instance.status.canResume {
@@ -42,6 +43,7 @@ struct VMConsoleView: View {
             } label: {
                 Label("Resume", systemImage: "play.fill")
             }
+            .help("Resume the virtual machine")
         }
 
         if instance.status.canStop {
@@ -50,6 +52,7 @@ struct VMConsoleView: View {
             } label: {
                 Label("Stop", systemImage: "stop.fill")
             }
+            .help("Stop the virtual machine")
         }
 
         if instance.status.canSave {
@@ -58,6 +61,7 @@ struct VMConsoleView: View {
             } label: {
                 Label("Save State", systemImage: "square.and.arrow.down")
             }
+            .help("Save the virtual machine state to disk")
         }
     }
 }
