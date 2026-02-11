@@ -1,0 +1,117 @@
+import Foundation
+import os
+
+/// Manages VM bundle directories on disk under `~/Library/Application Support/Kernova/VMs/`.
+///
+/// Each VM is stored as a bundle directory named by its UUID, containing:
+/// - `config.json` — Serialized `VMConfiguration`
+/// - `Disk.asif` — ASIF sparse disk image
+/// - macOS-specific files: `AuxiliaryStorage`, `HardwareModel`, `MachineIdentifier`
+/// - Optional: `RestoreImage.ipsw`, `SaveFile.vzvmsave`
+struct VMStorageService: Sendable {
+
+    private static let logger = Logger(subsystem: "com.kernova.app", category: "VMStorageService")
+
+    // MARK: - Directory Helpers
+
+    /// The root directory for all VM bundles.
+    var vmsDirectory: URL {
+        get throws {
+            let appSupport = try FileManager.default.url(
+                for: .applicationSupportDirectory,
+                in: .userDomainMask,
+                appropriateFor: nil,
+                create: true
+            )
+            let vmsDir = appSupport
+                .appendingPathComponent("Kernova", isDirectory: true)
+                .appendingPathComponent("VMs", isDirectory: true)
+
+            if !FileManager.default.fileExists(atPath: vmsDir.path) {
+                try FileManager.default.createDirectory(at: vmsDir, withIntermediateDirectories: true)
+            }
+            return vmsDir
+        }
+    }
+
+    /// Returns the bundle directory URL for a given VM configuration.
+    func bundleURL(for configuration: VMConfiguration) throws -> URL {
+        try vmsDirectory.appendingPathComponent(configuration.id.uuidString, isDirectory: true)
+    }
+
+    // MARK: - CRUD
+
+    /// Lists all VM bundle directories.
+    func listVMBundles() throws -> [URL] {
+        let dir = try vmsDirectory
+        let contents = try FileManager.default.contentsOfDirectory(
+            at: dir,
+            includingPropertiesForKeys: [.isDirectoryKey],
+            options: [.skipsHiddenFiles]
+        )
+        return contents.filter { url in
+            let configFile = url.appendingPathComponent("config.json")
+            return FileManager.default.fileExists(atPath: configFile.path)
+        }
+    }
+
+    /// Loads a `VMConfiguration` from a bundle directory.
+    func loadConfiguration(from bundleURL: URL) throws -> VMConfiguration {
+        let configURL = bundleURL.appendingPathComponent("config.json")
+        let data = try Data(contentsOf: configURL)
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return try decoder.decode(VMConfiguration.self, from: data)
+    }
+
+    /// Saves a `VMConfiguration` to a bundle directory.
+    func saveConfiguration(_ configuration: VMConfiguration, to bundleURL: URL) throws {
+        let configURL = bundleURL.appendingPathComponent("config.json")
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let data = try encoder.encode(configuration)
+        try data.write(to: configURL, options: .atomic)
+        Self.logger.info("Saved configuration for VM '\(configuration.name)' to \(bundleURL.lastPathComponent)")
+    }
+
+    /// Creates a new VM bundle directory and saves the initial configuration.
+    func createVMBundle(for configuration: VMConfiguration) throws -> URL {
+        let bundle = try bundleURL(for: configuration)
+
+        if FileManager.default.fileExists(atPath: bundle.path) {
+            throw VMStorageError.bundleAlreadyExists(configuration.id)
+        }
+
+        try FileManager.default.createDirectory(at: bundle, withIntermediateDirectories: true)
+        try saveConfiguration(configuration, to: bundle)
+
+        Self.logger.info("Created VM bundle for '\(configuration.name)' at \(bundle.lastPathComponent)")
+        return bundle
+    }
+
+    /// Deletes a VM bundle directory and all its contents.
+    func deleteVMBundle(at bundleURL: URL) throws {
+        guard FileManager.default.fileExists(atPath: bundleURL.path) else {
+            throw VMStorageError.bundleNotFound(bundleURL)
+        }
+        try FileManager.default.removeItem(at: bundleURL)
+        Self.logger.info("Deleted VM bundle at \(bundleURL.lastPathComponent)")
+    }
+}
+
+// MARK: - Errors
+
+enum VMStorageError: LocalizedError {
+    case bundleAlreadyExists(UUID)
+    case bundleNotFound(URL)
+
+    var errorDescription: String? {
+        switch self {
+        case .bundleAlreadyExists(let id):
+            "A VM bundle already exists for ID \(id.uuidString)."
+        case .bundleNotFound(let url):
+            "VM bundle not found at \(url.path)."
+        }
+    }
+}

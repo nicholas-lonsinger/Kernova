@@ -1,0 +1,222 @@
+import Foundation
+import os
+
+/// Central view model managing the list of all VMs and lifecycle operations.
+@MainActor
+@Observable
+final class VMLibraryViewModel {
+
+    private static let logger = Logger(subsystem: "com.kernova.app", category: "VMLibraryViewModel")
+
+    // MARK: - Services
+
+    let storageService = VMStorageService()
+    let virtualizationService = VirtualizationService()
+    let diskImageService = DiskImageService()
+    let ipswService = IPSWService()
+    let installService = MacOSInstallService()
+
+    // MARK: - State
+
+    var instances: [VMInstance] = []
+    var selectedID: UUID?
+    var showCreationWizard = false
+    var showDeleteConfirmation = false
+    var showError = false
+    var errorMessage: String?
+    var instanceToDelete: VMInstance?
+
+    var selectedInstance: VMInstance? {
+        instances.first { $0.id == selectedID }
+    }
+
+    // MARK: - Initialization
+
+    init() {
+        loadVMs()
+    }
+
+    // MARK: - Load
+
+    func loadVMs() {
+        do {
+            let bundles = try storageService.listVMBundles()
+            instances = bundles.compactMap { bundleURL in
+                do {
+                    let config = try storageService.loadConfiguration(from: bundleURL)
+                    return VMInstance(configuration: config, bundleURL: bundleURL)
+                } catch {
+                    Self.logger.error("Failed to load VM from \(bundleURL.lastPathComponent): \(error.localizedDescription)")
+                    return nil
+                }
+            }
+            .sorted { $0.configuration.createdAt < $1.configuration.createdAt }
+
+            Self.logger.info("Loaded \(self.instances.count) VMs")
+        } catch {
+            presentError(error)
+        }
+    }
+
+    // MARK: - Create
+
+    func createVM(from wizard: VMCreationViewModel) async {
+        do {
+            let config = wizard.buildConfiguration()
+            let bundleURL = try storageService.createVMBundle(for: config)
+            let instance = VMInstance(configuration: config, bundleURL: bundleURL)
+
+            // Create disk image
+            try await diskImageService.createDiskImage(
+                at: instance.diskImageURL,
+                sizeInGB: config.diskSizeInGB
+            )
+
+            instances.append(instance)
+            selectedID = instance.id
+
+            // For macOS guests, start installation
+            #if arch(arm64)
+            if config.guestOS == .macOS {
+                await installMacOS(on: instance, wizard: wizard)
+            }
+            #endif
+
+            Self.logger.info("Created VM '\(config.name)'")
+        } catch {
+            presentError(error)
+        }
+    }
+
+    // MARK: - macOS Installation
+
+    #if arch(arm64)
+    private func installMacOS(on instance: VMInstance, wizard: VMCreationViewModel) async {
+        do {
+            let ipswURL: URL
+
+            switch wizard.ipswSource {
+            case .downloadLatest:
+                // Download the latest IPSW
+                let restoreImage = try await ipswService.fetchLatestSupportedImage()
+                try await ipswService.downloadRestoreImage(
+                    restoreImage,
+                    to: instance.restoreImageURL
+                ) { progress in
+                    instance.installProgress = progress * 0.3 // First 30% is download
+                }
+                ipswURL = instance.restoreImageURL
+
+            case .localFile:
+                if let path = wizard.ipswPath {
+                    ipswURL = URL(fileURLWithPath: path)
+                } else {
+                    throw IPSWError.noDownloadURL
+                }
+            }
+
+            // Run macOS installation
+            try await installService.install(
+                into: instance,
+                restoreImageURL: ipswURL
+            ) { progress in
+                instance.installProgress = 0.3 + (progress * 0.7) // Last 70% is install
+            }
+        } catch {
+            instance.status = .error
+            instance.errorMessage = error.localizedDescription
+            presentError(error)
+        }
+    }
+    #endif
+
+    // MARK: - Lifecycle
+
+    func start(_ instance: VMInstance) async {
+        do {
+            try await virtualizationService.start(instance)
+        } catch {
+            presentError(error)
+        }
+    }
+
+    func stop(_ instance: VMInstance) {
+        do {
+            try virtualizationService.stop(instance)
+        } catch {
+            presentError(error)
+        }
+    }
+
+    func forceStop(_ instance: VMInstance) {
+        do {
+            try virtualizationService.forceStop(instance)
+        } catch {
+            presentError(error)
+        }
+    }
+
+    func pause(_ instance: VMInstance) async {
+        do {
+            try await virtualizationService.pause(instance)
+        } catch {
+            presentError(error)
+        }
+    }
+
+    func resume(_ instance: VMInstance) async {
+        do {
+            try await virtualizationService.resume(instance)
+        } catch {
+            presentError(error)
+        }
+    }
+
+    func save(_ instance: VMInstance) async {
+        do {
+            try await virtualizationService.save(instance)
+        } catch {
+            presentError(error)
+        }
+    }
+
+    // MARK: - Delete
+
+    func confirmDelete(_ instance: VMInstance) {
+        instanceToDelete = instance
+        showDeleteConfirmation = true
+    }
+
+    func deleteConfirmed(_ instance: VMInstance) {
+        do {
+            try storageService.deleteVMBundle(at: instance.bundleURL)
+            instances.removeAll { $0.id == instance.id }
+            if selectedID == instance.id {
+                selectedID = instances.first?.id
+            }
+            Self.logger.info("Deleted VM '\(instance.name)'")
+        } catch {
+            presentError(error)
+        }
+        instanceToDelete = nil
+        showDeleteConfirmation = false
+    }
+
+    // MARK: - Save Configuration
+
+    func saveConfiguration(for instance: VMInstance) {
+        do {
+            try storageService.saveConfiguration(instance.configuration, to: instance.bundleURL)
+        } catch {
+            Self.logger.error("Failed to save configuration: \(error.localizedDescription)")
+        }
+    }
+
+    // MARK: - Error Handling
+
+    private func presentError(_ error: Error) {
+        errorMessage = error.localizedDescription
+        showError = true
+        Self.logger.error("\(error.localizedDescription)")
+    }
+}
