@@ -34,16 +34,5 @@ struct ContentView: View {
         } message: { message in
             Text(message)
         }
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    viewModel.showCreationWizard = true
-                } label: {
-                    Label("New VM", systemImage: "plus")
-                }
-                .help("Create a new virtual machine")
-                .keyboardShortcut("n", modifiers: .command)
-            }
-        }
     }
 }
