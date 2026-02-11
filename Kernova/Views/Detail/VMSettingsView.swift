@@ -96,6 +96,7 @@ struct VMSettingsView: View {
             } label: {
                 Label("Start", systemImage: "play.fill")
             }
+            .help("Start this virtual machine")
         }
 
         Button(role: .destructive) {
@@ -103,5 +104,6 @@ struct VMSettingsView: View {
         } label: {
             Label("Delete", systemImage: "trash")
         }
+        .help("Delete this virtual machine")
     }
 }
