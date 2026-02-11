@@ -17,11 +17,6 @@ struct VMSettingsView: View {
             .formStyle(.grouped)
             .padding()
         }
-        .toolbar {
-            ToolbarItemGroup(placement: .primaryAction) {
-                toolbarButtons
-            }
-        }
         .onChange(of: instance.configuration) { _, _ in
             viewModel.saveConfiguration(for: instance)
         }
@@ -84,26 +79,5 @@ struct VMSettingsView: View {
             TextEditor(text: $instance.configuration.notes)
                 .frame(minHeight: 60)
         }
-    }
-
-    // MARK: - Toolbar
-
-    @ViewBuilder
-    private var toolbarButtons: some View {
-        if instance.status.canStart {
-            Button {
-                Task { await viewModel.start(instance) }
-            } label: {
-                Label("Start", systemImage: "play.fill")
-            }
-            .help("Start this virtual machine")
-        }
-
-        Button(role: .destructive) {
-            viewModel.confirmDelete(instance)
-        } label: {
-            Label("Delete", systemImage: "trash")
-        }
-        .help("Delete this virtual machine")
     }
 }

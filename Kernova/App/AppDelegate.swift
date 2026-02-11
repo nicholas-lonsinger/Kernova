@@ -67,6 +67,38 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         viewModel.showCreationWizard = true
     }
 
+    // MARK: - VM Actions
+
+    @objc func startVM(_ sender: Any?) {
+        guard let instance = viewModel.selectedInstance else { return }
+        Task { await viewModel.start(instance) }
+    }
+
+    @objc func pauseVM(_ sender: Any?) {
+        guard let instance = viewModel.selectedInstance else { return }
+        Task { await viewModel.pause(instance) }
+    }
+
+    @objc func resumeVM(_ sender: Any?) {
+        guard let instance = viewModel.selectedInstance else { return }
+        Task { await viewModel.resume(instance) }
+    }
+
+    @objc func stopVM(_ sender: Any?) {
+        guard let instance = viewModel.selectedInstance else { return }
+        viewModel.stop(instance)
+    }
+
+    @objc func saveVM(_ sender: Any?) {
+        guard let instance = viewModel.selectedInstance else { return }
+        Task { await viewModel.save(instance) }
+    }
+
+    @objc func deleteVM(_ sender: Any?) {
+        guard let instance = viewModel.selectedInstance else { return }
+        viewModel.confirmDelete(instance)
+    }
+
     // MARK: - Main Menu
 
     private func setupMainMenu() {
