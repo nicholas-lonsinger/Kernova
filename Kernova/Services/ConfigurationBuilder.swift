@@ -115,7 +115,12 @@ struct ConfigurationBuilder: Sendable {
         config: VMConfiguration,
         bundleURL: URL
     ) throws {
-        vzConfig.platform = VZGenericPlatformConfiguration()
+        let platform = VZGenericPlatformConfiguration()
+        if let idData = config.genericMachineIdentifierData,
+           let machineID = VZGenericMachineIdentifier(dataRepresentation: idData) {
+            platform.machineIdentifier = machineID
+        }
+        vzConfig.platform = platform
 
         let efiVariableStoreURL = bundleURL.appendingPathComponent("EFIVariableStore")
         let variableStore: VZEFIVariableStore
@@ -149,7 +154,12 @@ struct ConfigurationBuilder: Sendable {
         _ vzConfig: VZVirtualMachineConfiguration,
         config: VMConfiguration
     ) throws {
-        vzConfig.platform = VZGenericPlatformConfiguration()
+        let platform = VZGenericPlatformConfiguration()
+        if let idData = config.genericMachineIdentifierData,
+           let machineID = VZGenericMachineIdentifier(dataRepresentation: idData) {
+            platform.machineIdentifier = machineID
+        }
+        vzConfig.platform = platform
 
         guard let kernelPath = config.kernelPath else {
             throw ConfigurationBuilderError.missingKernelPath

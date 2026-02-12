@@ -1,4 +1,5 @@
 import Foundation
+import Virtualization
 
 /// Wizard steps for creating a new VM.
 enum VMCreationStep: String, CaseIterable, Identifiable, Sendable {
@@ -129,13 +130,25 @@ final class VMCreationViewModel {
     // MARK: - Build Configuration
 
     func buildConfiguration() -> VMConfiguration {
-        VMConfiguration(
+        let bootMode = effectiveBootMode
+
+        // Generate a stable MAC address so save/restore uses a consistent config
+        let macAddress = VZMACAddress.randomLocallyAdministered().string
+
+        // For EFI/Linux VMs, generate a stable machine identifier
+        let genericMachineIdentifierData: Data? = (bootMode == .efi || bootMode == .linuxKernel)
+            ? VZGenericMachineIdentifier().dataRepresentation
+            : nil
+
+        return VMConfiguration(
             name: vmName.trimmingCharacters(in: .whitespaces),
             guestOS: selectedOS,
-            bootMode: effectiveBootMode,
+            bootMode: bootMode,
             cpuCount: cpuCount,
             memorySizeInGB: memoryInGB,
             diskSizeInGB: diskSizeInGB,
+            macAddress: macAddress,
+            genericMachineIdentifierData: genericMachineIdentifierData,
             kernelPath: selectedBootMode == .linuxKernel ? kernelPath : nil,
             initrdPath: selectedBootMode == .linuxKernel ? initrdPath : nil,
             kernelCommandLine: selectedBootMode == .linuxKernel ? kernelCommandLine : nil

@@ -1,4 +1,5 @@
 import Foundation
+import Virtualization
 import os
 
 /// Central view model managing the list of all VMs and lifecycle operations.
@@ -43,8 +44,14 @@ final class VMLibraryViewModel {
             let bundles = try storageService.listVMBundles()
             instances = bundles.compactMap { bundleURL in
                 do {
-                    let config = try storageService.loadConfiguration(from: bundleURL)
-                    return VMInstance(configuration: config, bundleURL: bundleURL)
+                    var config = try storageService.loadConfiguration(from: bundleURL)
+                    let needsMigration = migrateConfigurationIfNeeded(&config)
+                    let instance = VMInstance(configuration: config, bundleURL: bundleURL)
+                    if needsMigration {
+                        try storageService.saveConfiguration(config, to: bundleURL)
+                        Self.logger.info("Migrated VM '\(config.name)': persisted stable identifiers")
+                    }
+                    return instance
                 } catch {
                     Self.logger.error("Failed to load VM from \(bundleURL.lastPathComponent): \(error.localizedDescription)")
                     return nil
@@ -56,6 +63,27 @@ final class VMLibraryViewModel {
         } catch {
             presentError(error)
         }
+    }
+
+    /// Fills in missing stable identifiers for VMs created before these fields were persisted.
+    /// Returns `true` if the configuration was modified and needs to be saved.
+    private func migrateConfigurationIfNeeded(_ config: inout VMConfiguration) -> Bool {
+        var migrated = false
+
+        // Generate a stable MAC address if networking is enabled but none was persisted
+        if config.networkEnabled && config.macAddress == nil {
+            config.macAddress = VZMACAddress.randomLocallyAdministered().string
+            migrated = true
+        }
+
+        // Generate a stable generic machine identifier for EFI/Linux VMs
+        if (config.bootMode == .efi || config.bootMode == .linuxKernel)
+            && config.genericMachineIdentifierData == nil {
+            config.genericMachineIdentifierData = VZGenericMachineIdentifier().dataRepresentation
+            migrated = true
+        }
+
+        return migrated
     }
 
     // MARK: - Create
