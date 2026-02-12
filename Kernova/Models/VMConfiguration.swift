@@ -37,6 +37,11 @@ struct VMConfiguration: Codable, Identifiable, Sendable, Equatable {
     /// Serialized `VZMacMachineIdentifier.dataRepresentation`.
     var machineIdentifierData: Data?
 
+    // MARK: - EFI / Linux generic platform
+
+    /// Serialized `VZGenericMachineIdentifier.dataRepresentation`.
+    var genericMachineIdentifierData: Data?
+
     // MARK: - Linux kernel boot
 
     var kernelPath: String?
@@ -65,6 +70,7 @@ struct VMConfiguration: Codable, Identifiable, Sendable, Equatable {
         macAddress: String? = nil,
         hardwareModelData: Data? = nil,
         machineIdentifierData: Data? = nil,
+        genericMachineIdentifierData: Data? = nil,
         kernelPath: String? = nil,
         initrdPath: String? = nil,
         kernelCommandLine: String? = nil,
@@ -85,6 +91,7 @@ struct VMConfiguration: Codable, Identifiable, Sendable, Equatable {
         self.macAddress = macAddress
         self.hardwareModelData = hardwareModelData
         self.machineIdentifierData = machineIdentifierData
+        self.genericMachineIdentifierData = genericMachineIdentifierData
         self.kernelPath = kernelPath
         self.initrdPath = initrdPath
         self.kernelCommandLine = kernelCommandLine

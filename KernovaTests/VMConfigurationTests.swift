@@ -123,4 +123,69 @@ struct VMConfigurationTests {
         #expect(decoded.initrdPath == "/path/to/initrd")
         #expect(decoded.kernelCommandLine == "console=hvc0 root=/dev/vda1")
     }
+
+    @Test("Generic machine identifier data round-trips through JSON")
+    func genericMachineIdentifierRoundTrip() throws {
+        let identifierData = Data([0xDE, 0xAD, 0xBE, 0xEF])
+
+        let config = VMConfiguration(
+            name: "EFI Linux VM",
+            guestOS: .linux,
+            bootMode: .efi,
+            genericMachineIdentifierData: identifierData
+        )
+
+        let encoder = JSONEncoder()
+        let data = try encoder.encode(config)
+        let decoded = try JSONDecoder().decode(VMConfiguration.self, from: data)
+
+        #expect(decoded.genericMachineIdentifierData == identifierData)
+    }
+
+    @Test("Backward compatibility: decoding JSON without genericMachineIdentifierData")
+    func backwardCompatibilityGenericMachineIdentifier() throws {
+        // Simulate a config.json from before the genericMachineIdentifierData field existed
+        let json = """
+        {
+            "id": "12345678-1234-1234-1234-123456789012",
+            "name": "Old VM",
+            "guestOS": "linux",
+            "bootMode": "efi",
+            "cpuCount": 4,
+            "memorySizeInGB": 8,
+            "diskSizeInGB": 64,
+            "displayWidth": 1920,
+            "displayHeight": 1200,
+            "displayPPI": 144,
+            "networkEnabled": true,
+            "createdAt": "2025-01-01T00:00:00Z",
+            "notes": ""
+        }
+        """
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let config = try decoder.decode(VMConfiguration.self, from: Data(json.utf8))
+
+        #expect(config.name == "Old VM")
+        #expect(config.genericMachineIdentifierData == nil)
+        #expect(config.macAddress == nil)
+    }
+
+    @Test("VMStatus.canStart returns true for stopped and error states")
+    func canStartStates() {
+        #expect(VMStatus.stopped.canStart == true)
+        #expect(VMStatus.error.canStart == true)
+        #expect(VMStatus.running.canStart == false)
+        #expect(VMStatus.paused.canStart == false)
+        #expect(VMStatus.starting.canStart == false)
+    }
+
+    @Test("VMStatus.canEditSettings returns true for stopped and error states")
+    func canEditSettingsStates() {
+        #expect(VMStatus.stopped.canEditSettings == true)
+        #expect(VMStatus.error.canEditSettings == true)
+        #expect(VMStatus.running.canEditSettings == false)
+        #expect(VMStatus.paused.canEditSettings == false)
+    }
 }

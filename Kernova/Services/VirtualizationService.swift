@@ -32,14 +32,30 @@ final class VirtualizationService {
             instance.virtualMachine = vm
             instance.setupDelegate()
 
-            // If a save file exists, restore from it instead of cold booting
+            // If a save file exists, attempt to restore; fall back to cold boot on failure
             if instance.hasSaveFile {
-                instance.status = .restoring
-                try await restoreMachineState(vm, from: instance.saveFileURL)
-                try await vm.resume()
+                do {
+                    instance.status = .restoring
+                    try await restoreMachineState(vm, from: instance.saveFileURL)
+                    try await vm.resume()
 
-                // Remove the save file after successful restore
-                try? FileManager.default.removeItem(at: instance.saveFileURL)
+                    // Remove the save file after successful restore
+                    try? FileManager.default.removeItem(at: instance.saveFileURL)
+                } catch {
+                    Self.logger.warning(
+                        "Restore failed for VM '\(instance.name)', falling back to cold boot: \(error.localizedDescription)"
+                    )
+
+                    // Remove the stale save file so future starts don't hit the same failure
+                    try? FileManager.default.removeItem(at: instance.saveFileURL)
+
+                    // Create a fresh VZVirtualMachine since the previous one may be in a bad state
+                    let freshVM = VZVirtualMachine(configuration: vzConfig)
+                    instance.virtualMachine = freshVM
+                    instance.setupDelegate()
+                    instance.status = .starting
+                    try await freshVM.start()
+                }
             } else {
                 try await vm.start()
             }

@@ -42,10 +42,10 @@ enum VMStatus: String, Codable, Sendable {
         }
     }
 
-    var canStart: Bool { self == .stopped }
+    var canStart: Bool { self == .stopped || self == .error }
     var canStop: Bool { self == .running || self == .paused }
     var canPause: Bool { self == .running }
     var canResume: Bool { self == .paused }
     var canSave: Bool { self == .running || self == .paused }
-    var canEditSettings: Bool { self == .stopped }
+    var canEditSettings: Bool { self == .stopped || self == .error }
 }

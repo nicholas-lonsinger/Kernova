@@ -167,7 +167,7 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSGestu
         case .paused:
             return [Self.resumeVMIdentifier, Self.stopVMIdentifier, Self.saveVMIdentifier]
         case .error:
-            return [Self.deleteVMIdentifier]
+            return [Self.startVMIdentifier, Self.deleteVMIdentifier]
         case .starting, .saving, .restoring, .installing:
             return []
         }
