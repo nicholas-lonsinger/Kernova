@@ -95,8 +95,8 @@ struct VMStorageService: Sendable {
         guard FileManager.default.fileExists(atPath: bundleURL.path) else {
             throw VMStorageError.bundleNotFound(bundleURL)
         }
-        try FileManager.default.removeItem(at: bundleURL)
-        Self.logger.info("Deleted VM bundle at \(bundleURL.lastPathComponent)")
+        try FileManager.default.trashItem(at: bundleURL, resultingItemURL: nil)
+        Self.logger.info("Moved VM bundle to Trash: \(bundleURL.lastPathComponent)")
     }
 }
 
