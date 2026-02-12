@@ -51,17 +51,18 @@ Use the following format for all commits:
 <type>: <concise subject line>
 
 ## Summary
-<1-2 sentence overview of what changed and why>
+- <bullet points summarizing what changed and why>
 
 ## Changes
 - <bullet points describing each discrete change>
 
-## Validation
-- <how the changes were verified (build, tests, manual testing, etc.)>
+## Test plan
+- [ ] <verification step as a checkbox>
 
-## Notes
-- <optional: anything reviewers should know, follow-ups, caveats>
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
 ```
+
+A `## Notes` section may be added optionally if there are caveats, follow-ups, or things reviewers should know.
 
 ### Type prefixes
 
@@ -81,21 +82,20 @@ Use the following format for all commits:
 feat: Add VM snapshot support
 
 ## Summary
-Adds the ability to take and restore snapshots of running virtual machines,
-enabling users to save and revert VM state at any point.
+- Add the ability to take and restore snapshots of running virtual machines
+- Enables users to save and revert VM state at any point
 
 ## Changes
 - Add SnapshotService with create/restore/delete operations
 - Add snapshot UI to VMDetailView toolbar
 - Persist snapshot metadata in VMConfiguration
 
-## Validation
-- Built successfully on macOS 26
-- Tested snapshot create/restore cycle with macOS and Linux guests
-- All existing tests pass
+## Test plan
+- [ ] Built successfully on macOS 26
+- [ ] Tested snapshot create/restore cycle with macOS and Linux guests
+- [ ] All existing tests pass
 
-## Notes
-- Snapshot files are stored alongside the VM bundle
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
 ```
 
 The `Co-Authored-By` trailer is automatically appended by Claude and should not be included manually.
