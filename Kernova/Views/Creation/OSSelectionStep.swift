@@ -43,6 +43,7 @@ struct OSSelectionStep: View {
             }
             .frame(maxWidth: .infinity)
             .padding()
+            .contentShape(Rectangle())
             .background {
                 RoundedRectangle(cornerRadius: 12)
                     .fill(creationVM.selectedOS == os ? Color.accentColor.opacity(0.1) : Color.clear)
