@@ -44,7 +44,7 @@ struct SidebarView: View {
 
         Divider()
 
-        Button("Delete", role: .destructive) {
+        Button("Move to Trash", role: .destructive) {
             viewModel.confirmDelete(instance)
         }
         .disabled(instance.status != .stopped)

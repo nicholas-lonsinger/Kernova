@@ -22,8 +22,8 @@ struct VMStorageServiceTests {
         let configURL = bundleURL.appendingPathComponent("config.json")
         #expect(FileManager.default.fileExists(atPath: configURL.path))
 
-        // Clean up
-        try service.deleteVMBundle(at: bundleURL)
+        // Clean up (use removeItem directly to avoid polluting Trash during tests)
+        try FileManager.default.removeItem(at: bundleURL)
         #expect(!FileManager.default.fileExists(atPath: bundleURL.path))
     }
 
@@ -39,7 +39,7 @@ struct VMStorageServiceTests {
         )
 
         let bundleURL = try service.createVMBundle(for: config)
-        defer { try? service.deleteVMBundle(at: bundleURL) }
+        defer { try? FileManager.default.removeItem(at: bundleURL) }
 
         let loaded = try service.loadConfiguration(from: bundleURL)
         #expect(loaded.id == config.id)
@@ -58,7 +58,7 @@ struct VMStorageServiceTests {
         )
 
         let bundleURL = try service.createVMBundle(for: config)
-        defer { try? service.deleteVMBundle(at: bundleURL) }
+        defer { try? FileManager.default.removeItem(at: bundleURL) }
 
         // Update and save
         config.name = "Updated Name"
@@ -80,7 +80,7 @@ struct VMStorageServiceTests {
         )
 
         let bundleURL = try service.createVMBundle(for: config)
-        defer { try? service.deleteVMBundle(at: bundleURL) }
+        defer { try? FileManager.default.removeItem(at: bundleURL) }
 
         #expect(throws: VMStorageError.self) {
             _ = try service.createVMBundle(for: config)
@@ -106,7 +106,7 @@ struct VMStorageServiceTests {
         )
 
         let bundleURL = try service.createVMBundle(for: config)
-        defer { try? service.deleteVMBundle(at: bundleURL) }
+        defer { try? FileManager.default.removeItem(at: bundleURL) }
 
         let bundles = try service.listVMBundles()
         #expect(bundles.contains(bundleURL))

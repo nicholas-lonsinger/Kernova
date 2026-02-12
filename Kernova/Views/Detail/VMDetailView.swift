@@ -27,12 +27,12 @@ struct VMDetailView: View {
             isPresented: $viewModel.showDeleteConfirmation,
             presenting: viewModel.instanceToDelete
         ) { vm in
-            Button("Delete", role: .destructive) {
+            Button("Move to Trash", role: .destructive) {
                 viewModel.deleteConfirmed(vm)
             }
             Button("Cancel", role: .cancel) {}
         } message: { vm in
-            Text("Are you sure you want to delete \"\(vm.name)\"? This will permanently remove the VM and all its data.")
+            Text("\"\(vm.name)\" will be moved to the Trash. You can restore it using Finder's Put Back command. Empty the Trash to permanently delete the VM and reclaim disk space.")
         }
     }
 

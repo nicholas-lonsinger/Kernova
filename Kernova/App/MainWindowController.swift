@@ -286,10 +286,10 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSGestu
 
     private func makeDeleteVMItem() -> NSToolbarItem {
         let item = NSToolbarItem(itemIdentifier: Self.deleteVMIdentifier)
-        item.label = "Delete"
-        item.paletteLabel = "Delete VM"
-        item.toolTip = "Delete this virtual machine"
-        item.image = NSImage(systemSymbolName: "trash", accessibilityDescription: "Delete")
+        item.label = "Move to Trash"
+        item.paletteLabel = "Move VM to Trash"
+        item.toolTip = "Move this virtual machine to the Trash"
+        item.image = NSImage(systemSymbolName: "trash", accessibilityDescription: "Move to Trash")
         item.isBordered = true
         item.target = nil
         item.action = #selector(AppDelegate.deleteVM(_:))
