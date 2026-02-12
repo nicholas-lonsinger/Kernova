@@ -1,6 +1,22 @@
 import Foundation
 import Virtualization
 
+/// Represents the current phase of a macOS installation.
+enum MacOSInstallPhase: Sendable {
+    case downloading(progress: Double, bytesWritten: Int64, totalBytes: Int64)
+    case installing(progress: Double)
+}
+
+/// Tracks the full state of a multi-step macOS installation.
+struct MacOSInstallState: Sendable {
+    /// Whether the install includes a download step (false for local IPSW).
+    let hasDownloadStep: Bool
+    /// The current active phase.
+    var currentPhase: MacOSInstallPhase
+    /// Whether the download phase has completed.
+    var downloadCompleted: Bool = false
+}
+
 /// Runtime wrapper around a VM configuration, its backing virtual machine, and current status.
 @MainActor
 @Observable
@@ -14,11 +30,8 @@ final class VMInstance: Identifiable {
     var virtualMachine: VZVirtualMachine?
     let bundleURL: URL
 
-    /// Installation progress (0.0–1.0) when installing macOS.
-    var installProgress: Double = 0
-
-    /// Detailed status text shown below the progress bar during installation.
-    var installStatusDetail: String = ""
+    /// Structured installation state tracking download and install phases.
+    var installState: MacOSInstallState?
 
     /// Error message if the VM entered an error state.
     var errorMessage: String?

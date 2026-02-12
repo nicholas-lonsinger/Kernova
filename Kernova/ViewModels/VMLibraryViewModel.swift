@@ -140,58 +140,61 @@ final class VMLibraryViewModel {
     #if arch(arm64)
     private func installMacOS(on instance: VMInstance, wizard: VMCreationViewModel) async {
         do {
-            instance.status = .installing
-            instance.installStatusDetail = "Fetching restore image info…"
             let ipswURL: URL
 
             switch wizard.ipswSource {
             case .downloadLatest:
+                // Set up two-step install state before changing status
+                instance.installState = MacOSInstallState(
+                    hasDownloadStep: true,
+                    currentPhase: .downloading(progress: 0, bytesWritten: 0, totalBytes: 0)
+                )
+                instance.status = .installing
+
                 // Download the latest IPSW
                 let restoreImage = try await ipswService.fetchLatestSupportedImage()
                 try await ipswService.downloadRestoreImage(
                     restoreImage,
                     to: instance.restoreImageURL
                 ) { progress, bytesWritten, totalBytes in
-                    instance.installProgress = progress * 0.3 // First 30% is download
-                    let written = Self.formatBytes(bytesWritten)
-                    let total = Self.formatBytes(totalBytes)
-                    instance.installStatusDetail = "Downloading macOS Image: \(written) / \(total)"
+                    instance.installState?.currentPhase = .downloading(
+                        progress: progress,
+                        bytesWritten: bytesWritten,
+                        totalBytes: totalBytes
+                    )
                 }
+
+                // Mark download complete, transition to install phase
+                instance.installState?.downloadCompleted = true
+                instance.installState?.currentPhase = .installing(progress: 0)
                 ipswURL = instance.restoreImageURL
 
             case .localFile:
-                if let path = wizard.ipswPath {
-                    ipswURL = URL(fileURLWithPath: path)
-                } else {
+                guard let path = wizard.ipswPath else {
                     throw IPSWError.noDownloadURL
                 }
-                instance.installProgress = 0.3
-                instance.installStatusDetail = "Installing macOS…"
+                ipswURL = URL(fileURLWithPath: path)
+
+                // Local file: single-step install (no download)
+                instance.installState = MacOSInstallState(
+                    hasDownloadStep: false,
+                    currentPhase: .installing(progress: 0)
+                )
+                instance.status = .installing
             }
 
             // Run macOS installation
-            instance.installStatusDetail = "Installing macOS…"
             try await installService.install(
                 into: instance,
                 restoreImageURL: ipswURL
             ) { @MainActor progress in
-                instance.installProgress = 0.3 + (progress * 0.7) // Last 70% is install
-                instance.installStatusDetail = "Installing macOS: \(Int(progress * 100))%"
+                instance.installState?.currentPhase = .installing(progress: progress)
             }
         } catch {
             instance.status = .error
             instance.errorMessage = error.localizedDescription
             presentError(error)
         }
-    }
-
-    private static func formatBytes(_ bytes: Int64) -> String {
-        let gb = Double(bytes) / 1_073_741_824
-        if gb >= 1.0 {
-            return String(format: "%.1f GB", gb)
-        }
-        let mb = Double(bytes) / 1_048_576
-        return String(format: "%.1f MB", mb)
     }
     #endif
 
