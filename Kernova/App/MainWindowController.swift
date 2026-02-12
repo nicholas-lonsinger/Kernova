@@ -59,22 +59,28 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSGestu
         )
         window.contentViewController = splitVC
         window.title = "Kernova"
-        window.setContentSize(NSSize(width: 1100, height: 700))
         window.minSize = NSSize(width: 800, height: 500)
-        window.center()
-        window.setFrameAutosaveName("KernovaMainWindow")
 
         self.init(window: window)
         self.viewModel = viewModel
         self.sidebarHostingController = sidebarHosting
+        self.shouldCascadeWindows = false
 
         // Toolbar — managed via NSToolbarDelegate since SwiftUI toolbar propagation
         // doesn't work through NSSplitViewController child hosting controllers.
+        // Set up before frame restore since toolbar affects window geometry.
         let toolbar = NSToolbar(identifier: "KernovaMainToolbar")
         toolbar.displayMode = .iconOnly
         toolbar.delegate = self
         window.toolbar = toolbar
         window.toolbarStyle = .unified
+
+        // Restore saved frame BEFORE enabling autosave to avoid overwriting it.
+        // Only center on first launch (when no saved frame exists).
+        if !window.setFrameUsingName("KernovaMainWindow") {
+            window.center()
+        }
+        window.setFrameAutosaveName("KernovaMainWindow")
 
         // Deselect sidebar row when clicking empty space below the VM list
         let clickGesture = NSClickGestureRecognizer(target: self, action: #selector(sidebarEmptyAreaClicked(_:)))
