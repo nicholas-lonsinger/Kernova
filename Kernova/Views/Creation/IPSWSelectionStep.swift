@@ -82,6 +82,7 @@ struct IPSWSelectionStep: View {
                 }
             }
             .padding()
+            .contentShape(Rectangle())
             .background {
                 RoundedRectangle(cornerRadius: 10)
                     .fill(isSelected ? Color.accentColor.opacity(0.1) : Color.clear)
