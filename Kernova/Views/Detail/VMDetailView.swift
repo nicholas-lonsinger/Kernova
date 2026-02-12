@@ -12,7 +12,11 @@ struct VMDetailView: View {
                 VMSettingsView(instance: instance, viewModel: viewModel)
 
             case .installing:
-                installProgressView
+                if let installState = instance.installState {
+                    MacOSInstallProgressView(installState: installState)
+                } else {
+                    transitionView
+                }
 
             case .running, .paused:
                 VMConsoleView(instance: instance, viewModel: viewModel)
@@ -34,26 +38,6 @@ struct VMDetailView: View {
         } message: { vm in
             Text("\"\(vm.name)\" will be moved to the Trash. You can restore it using Finder's Put Back command. Empty the Trash to permanently delete the VM and reclaim disk space.")
         }
-    }
-
-    private var installProgressView: some View {
-        VStack(spacing: 16) {
-            ProgressView(value: instance.installProgress) {
-                Text("Installing macOS…")
-                    .font(.headline)
-            } currentValueLabel: {
-                Text("\(Int(instance.installProgress * 100))%")
-            }
-            .progressViewStyle(.linear)
-            .frame(maxWidth: 400)
-
-            if !instance.installStatusDetail.isEmpty {
-                Text(instance.installStatusDetail)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var transitionView: some View {

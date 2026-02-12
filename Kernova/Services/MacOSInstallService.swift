@@ -91,7 +91,7 @@ final class MacOSInstallService {
 
         instance.status = .stopped
         instance.virtualMachine = nil
-        instance.installProgress = 1.0
+        instance.installState?.currentPhase = .installing(progress: 1.0)
 
         Self.logger.info("macOS installation completed for '\(instance.name)'")
     }
