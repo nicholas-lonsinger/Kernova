@@ -42,3 +42,60 @@ Everything touching `VZVirtualMachine` is `@MainActor`. The codebase uses Swift 
 ### Tests
 
 Tests use Swift Testing (`@Suite`, `@Test`, `#expect`) — not XCTest. Test files are in `KernovaTests/`.
+
+## Commit Messages
+
+Use the following format for all commits:
+
+```
+<type>: <concise subject line>
+
+## Summary
+<1-2 sentence overview of what changed and why>
+
+## Changes
+- <bullet points describing each discrete change>
+
+## Validation
+- <how the changes were verified (build, tests, manual testing, etc.)>
+
+## Notes
+- <optional: anything reviewers should know, follow-ups, caveats>
+```
+
+### Type prefixes
+
+| Prefix     | Usage                                      |
+|------------|--------------------------------------------|
+| `feat`     | New feature or capability                  |
+| `fix`      | Bug fix                                    |
+| `refactor` | Code restructuring with no behavior change |
+| `docs`     | Documentation only                         |
+| `test`     | Adding or updating tests                   |
+| `chore`    | Build, CI, tooling, or dependency updates  |
+| `style`    | Formatting, whitespace, or cosmetic changes|
+
+### Example
+
+```
+feat: Add VM snapshot support
+
+## Summary
+Adds the ability to take and restore snapshots of running virtual machines,
+enabling users to save and revert VM state at any point.
+
+## Changes
+- Add SnapshotService with create/restore/delete operations
+- Add snapshot UI to VMDetailView toolbar
+- Persist snapshot metadata in VMConfiguration
+
+## Validation
+- Built successfully on macOS 26
+- Tested snapshot create/restore cycle with macOS and Linux guests
+- All existing tests pass
+
+## Notes
+- Snapshot files are stored alongside the VM bundle
+```
+
+The `Co-Authored-By` trailer is automatically appended by Claude and should not be included manually.
