@@ -1,0 +1,15 @@
+# <type>: <concise subject line>
+#
+# Types: feat | fix | refactor | docs | test | chore | style
+#
+# ## Summary
+# <1-2 sentence overview of what changed and why>
+#
+# ## Changes
+# - <bullet points describing each discrete change>
+#
+# ## Validation
+# - <how the changes were verified (build, tests, manual testing, etc.)>
+#
+# ## Notes
+# - <optional: anything reviewers should know, follow-ups, caveats>
