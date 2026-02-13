@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Settings form for editing a stopped VM's configuration.
 struct VMSettingsView: View {
@@ -17,6 +18,9 @@ struct VMSettingsView: View {
         ScrollView {
             Form {
                 generalSection
+                if instance.configuration.bootMode == .efi {
+                    bootMediaSection
+                }
                 resourcesSection
                 networkSection
                 sharedDirectoriesSection
@@ -40,6 +44,57 @@ struct VMSettingsView: View {
             LabeledContent("Boot Mode", value: instance.configuration.bootMode.displayName)
             LabeledContent("Created", value: instance.configuration.createdAt.formatted(date: .abbreviated, time: .shortened))
         }
+    }
+
+    @ViewBuilder
+    private var bootMediaSection: some View {
+        Section("Boot Media") {
+            if let isoPath = instance.configuration.isoPath {
+                HStack {
+                    Image(systemName: "opticaldisc")
+                        .foregroundStyle(.secondary)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text((isoPath as NSString).lastPathComponent)
+                        Text(isoPath)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                    }
+
+                    Spacer()
+
+                    Button(role: .destructive) {
+                        instance.configuration.isoPath = nil
+                    } label: {
+                        Image(systemName: "minus.circle.fill")
+                            .foregroundStyle(.red)
+                    }
+                    .buttonStyle(.plain)
+                }
+            } else {
+                Text("No ISO image attached")
+                    .foregroundStyle(.secondary)
+            }
+
+            Button(instance.configuration.isoPath != nil ? "Change ISO Image..." : "Browse ISO Image...") {
+                browseISOImage()
+            }
+        }
+    }
+
+    private func browseISOImage() {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+        panel.allowsMultipleSelection = false
+        panel.allowedContentTypes = [UTType(filenameExtension: "iso") ?? .diskImage]
+        panel.message = "Select an ISO image to attach to the VM"
+        panel.prompt = "Attach"
+
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        instance.configuration.isoPath = url.path
     }
 
     @ViewBuilder
