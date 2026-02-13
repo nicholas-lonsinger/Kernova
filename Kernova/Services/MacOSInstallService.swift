@@ -72,7 +72,10 @@ final class MacOSInstallService {
         instance.virtualMachine = vm
         instance.setupDelegate()
 
-        // 5. Run installer with progress tracking
+        // 5. Check for cancellation before starting the installer
+        try Task.checkCancellation()
+
+        // 6. Run installer with progress tracking
         let installer = VZMacOSInstaller(virtualMachine: vm, restoringFromImageAt: restoreImageURL)
 
         // Observe progress via KVO
@@ -83,11 +86,20 @@ final class MacOSInstallService {
             }
         }
 
-        Self.logger.info("Running macOS installer...")
-        try await installer.install()
+        defer {
+            progressObservation?.invalidate()
+            progressObservation = nil
+        }
 
-        progressObservation?.invalidate()
-        progressObservation = nil
+        // Capture progress for the @Sendable onCancel closure (VZMacOSInstaller is not Sendable)
+        nonisolated(unsafe) let installerProgress = installer.progress
+
+        Self.logger.info("Running macOS installer...")
+        try await withTaskCancellationHandler {
+            try await installer.install()
+        } onCancel: {
+            installerProgress.cancel()
+        }
 
         instance.status = .stopped
         instance.virtualMachine = nil

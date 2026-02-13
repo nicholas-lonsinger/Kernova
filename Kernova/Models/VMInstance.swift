@@ -33,6 +33,9 @@ final class VMInstance: Identifiable {
     /// Structured installation state tracking download and install phases.
     var installState: MacOSInstallState?
 
+    /// Handle to the in-flight macOS installation task, enabling cooperative cancellation.
+    var installTask: Task<Void, Never>?
+
     /// Error message if the VM entered an error state.
     var errorMessage: String?
 

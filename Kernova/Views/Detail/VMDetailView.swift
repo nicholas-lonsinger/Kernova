@@ -13,7 +13,9 @@ struct VMDetailView: View {
 
             case .installing:
                 if let installState = instance.installState {
-                    MacOSInstallProgressView(installState: installState)
+                    MacOSInstallProgressView(installState: installState) {
+                        viewModel.cancelInstallation(instance)
+                    }
                 } else {
                     transitionView
                 }

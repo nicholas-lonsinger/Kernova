@@ -31,15 +31,24 @@ struct IPSWService: Sendable {
 
         Self.logger.info("Downloading restore image from \(downloadURL)")
 
-        let tempURL: URL = try await withCheckedThrowingContinuation { continuation in
-            let delegate = SessionDelegate(progressHandler: progressHandler, continuation: continuation)
-            let session = URLSession(
-                configuration: .default,
-                delegate: delegate,
-                delegateQueue: nil
-            )
-            delegate.session = session
-            session.downloadTask(with: downloadURL).resume()
+        // Create delegate and session before entering the continuation so that
+        // the cancellation handler can call invalidateAndCancel() on the session.
+        let delegate = SessionDelegate(progressHandler: progressHandler)
+        let session = URLSession(
+            configuration: .default,
+            delegate: delegate,
+            delegateQueue: nil
+        )
+        delegate.session = session
+
+        let tempURL: URL = try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                delegate.continuation = continuation
+                session.downloadTask(with: downloadURL).resume()
+            }
+        } onCancel: {
+            Self.logger.info("Download cancelled — invalidating URLSession")
+            session.invalidateAndCancel()
         }
 
         // Move the downloaded file to the destination
@@ -63,15 +72,13 @@ struct IPSWService: Sendable {
 /// Session-level delegate that reliably receives download progress callbacks.
 private final class SessionDelegate: NSObject, URLSessionDownloadDelegate, @unchecked Sendable {
     let progressHandler: @MainActor @Sendable (Double, Int64, Int64) -> Void
-    private var continuation: CheckedContinuation<URL, any Error>?
+    var continuation: CheckedContinuation<URL, any Error>?
     var session: URLSession?
 
     init(
-        progressHandler: @MainActor @Sendable @escaping (Double, Int64, Int64) -> Void,
-        continuation: CheckedContinuation<URL, any Error>
+        progressHandler: @MainActor @Sendable @escaping (Double, Int64, Int64) -> Void
     ) {
         self.progressHandler = progressHandler
-        self.continuation = continuation
     }
 
     func urlSession(
