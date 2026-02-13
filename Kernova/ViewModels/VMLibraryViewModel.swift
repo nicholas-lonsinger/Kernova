@@ -120,10 +120,10 @@ final class VMLibraryViewModel {
             instances.append(instance)
             selectedID = instance.id
 
-            // For macOS guests, start installation (fire-and-forget so wizard can dismiss)
+            // For macOS guests, start installation (store task handle for cancellation support)
             #if arch(arm64)
             if config.guestOS == .macOS {
-                Task {
+                instance.installTask = Task {
                     await installMacOS(on: instance, wizard: wizard)
                 }
             }
@@ -190,11 +190,45 @@ final class VMLibraryViewModel {
             ) { @MainActor progress in
                 instance.installState?.currentPhase = .installing(progress: progress)
             }
+        } catch is CancellationError {
+            Self.logger.info("macOS installation cancelled for '\(instance.name)'")
+        } catch let error as NSError where error.domain == NSURLErrorDomain && error.code == NSURLErrorCancelled {
+            Self.logger.info("IPSW download cancelled for '\(instance.name)'")
         } catch {
             instance.status = .error
             instance.errorMessage = error.localizedDescription
             presentError(error)
         }
+
+        instance.installTask = nil
+    }
+
+    /// Cancels an in-progress macOS installation, cleans up the VM bundle, and removes it from the library.
+    func cancelInstallation(_ instance: VMInstance) {
+        Self.logger.info("Cancelling installation for '\(instance.name)'")
+
+        // 1. Cancel the in-flight task (triggers cooperative cancellation in download/install)
+        instance.installTask?.cancel()
+        instance.installTask = nil
+
+        // 2. Release VZ resources
+        instance.virtualMachine = nil
+        instance.installState = nil
+
+        // 3. Remove bundle from disk (moves to Trash)
+        do {
+            try storageService.deleteVMBundle(at: instance.bundleURL)
+        } catch {
+            Self.logger.error("Failed to trash VM bundle during cancellation: \(error.localizedDescription)")
+        }
+
+        // 4. Remove from library and update selection
+        instances.removeAll { $0.id == instance.id }
+        if selectedID == instance.id {
+            selectedID = instances.first?.id
+        }
+
+        Self.logger.info("Installation cancelled and VM '\(instance.name)' moved to Trash")
     }
     #endif
 

@@ -7,6 +7,9 @@ import SwiftUI
 /// only the install progress bar is shown without step numbering.
 struct MacOSInstallProgressView: View {
     let installState: MacOSInstallState
+    var onCancel: (() -> Void)?
+
+    @State private var showCancelConfirmation = false
 
     var body: some View {
         VStack(spacing: 20) {
@@ -29,9 +32,25 @@ struct MacOSInstallProgressView: View {
                 .font(.subheadline.monospacedDigit())
                 .foregroundStyle(.secondary)
                 .contentTransition(.numericText())
+
+            if onCancel != nil {
+                Button("Cancel") {
+                    showCancelConfirmation = true
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+            }
         }
         .frame(maxWidth: 400)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .alert("Cancel Installation?", isPresented: $showCancelConfirmation) {
+            Button("Cancel Installation", role: .destructive) {
+                onCancel?()
+            }
+            Button("Continue", role: .cancel) {}
+        } message: {
+            Text("The virtual machine and all downloaded files will be moved to the Trash.")
+        }
     }
 
     // MARK: - Two-Step Indicator
