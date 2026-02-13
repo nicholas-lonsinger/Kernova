@@ -202,6 +202,22 @@ struct ConfigurationBuilder: Sendable {
         let diskAttachment = try VZDiskImageStorageDeviceAttachment(url: diskURL, readOnly: false)
         let storage = VZVirtioBlockDeviceConfiguration(attachment: diskAttachment)
         vzConfig.storageDevices = [storage]
+
+        // Attach ISO as USB mass storage for EFI boot (e.g. Linux installer)
+        if config.bootMode == .efi, let isoPath = config.isoPath {
+            let isoURL = URL(fileURLWithPath: isoPath)
+            if FileManager.default.fileExists(atPath: isoURL.path) {
+                do {
+                    let isoAttachment = try VZDiskImageStorageDeviceAttachment(url: isoURL, readOnly: true)
+                    let usbStorage = VZUSBMassStorageDeviceConfiguration(attachment: isoAttachment)
+                    vzConfig.storageDevices.append(usbStorage)
+                } catch {
+                    Self.logger.warning("Failed to attach ISO at \(isoPath): \(error.localizedDescription)")
+                }
+            } else {
+                Self.logger.warning("ISO not found at \(isoPath), skipping — VM will boot from disk")
+            }
+        }
     }
 
     private func configureNetwork(_ vzConfig: VZVirtualMachineConfiguration, config: VMConfiguration) {

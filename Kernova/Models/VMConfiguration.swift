@@ -42,6 +42,9 @@ struct VMConfiguration: Codable, Identifiable, Sendable, Equatable {
     /// Serialized `VZGenericMachineIdentifier.dataRepresentation`.
     var genericMachineIdentifierData: Data?
 
+    /// Path to an ISO image attached as a USB mass storage device (EFI boot).
+    var isoPath: String?
+
     // MARK: - Linux kernel boot
 
     var kernelPath: String?
@@ -75,6 +78,7 @@ struct VMConfiguration: Codable, Identifiable, Sendable, Equatable {
         hardwareModelData: Data? = nil,
         machineIdentifierData: Data? = nil,
         genericMachineIdentifierData: Data? = nil,
+        isoPath: String? = nil,
         kernelPath: String? = nil,
         initrdPath: String? = nil,
         kernelCommandLine: String? = nil,
@@ -97,6 +101,7 @@ struct VMConfiguration: Codable, Identifiable, Sendable, Equatable {
         self.hardwareModelData = hardwareModelData
         self.machineIdentifierData = machineIdentifierData
         self.genericMachineIdentifierData = genericMachineIdentifierData
+        self.isoPath = isoPath
         self.kernelPath = kernelPath
         self.initrdPath = initrdPath
         self.kernelCommandLine = kernelCommandLine
