@@ -43,6 +43,10 @@ struct IPSWSelectionStep: View {
                 pathBadge(path: path) {
                     selectDownloadDestination()
                 }
+
+                if creationVM.shouldShowOverwriteWarning {
+                    overwriteWarningBanner
+                }
             }
 
             if creationVM.ipswSource == .localFile, let path = creationVM.ipswPath {
@@ -70,6 +74,34 @@ struct IPSWSelectionStep: View {
         }
         .padding(8)
         .background(Color.secondary.opacity(0.1), in: RoundedRectangle(cornerRadius: 6))
+    }
+
+    private var overwriteWarningBanner: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(.yellow)
+
+            Text("A file already exists at this location. It will be replaced when downloading.")
+                .font(.callout)
+
+            Spacer()
+
+            Button("Use Existing File") {
+                creationVM.useExistingDownloadFile()
+            }
+            .controlSize(.small)
+
+            Button("Download & Replace") {
+                creationVM.confirmOverwrite()
+            }
+            .controlSize(.small)
+        }
+        .padding(10)
+        .background {
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color.yellow.opacity(0.1))
+                .strokeBorder(Color.yellow.opacity(0.3), lineWidth: 1)
+        }
     }
 
     private func sourceButton(

@@ -112,13 +112,14 @@ struct VMCreationViewModelTests {
         #expect(vm.ipswDownloadPath == VMCreationViewModel.defaultIPSWDownloadPath)
     }
 
-    @Test("canAdvance is true by default for macOS downloadLatest")
+    @Test("canAdvance is true for macOS downloadLatest when file does not exist at path")
     func canAdvanceDefaultMacOSDownloadLatest() {
         let vm = VMCreationViewModel()
         vm.currentStep = .bootConfig
         vm.selectedOS = .macOS
         vm.ipswSource = .downloadLatest
-        // Default ipswDownloadPath is non-nil, so canAdvance should be true
+        // Use a non-existent path so the overwrite warning doesn't trigger
+        vm.ipswDownloadPath = "/nonexistent/path/RestoreImage.ipsw"
         #expect(vm.canAdvance == true)
     }
 
@@ -401,5 +402,104 @@ struct VMCreationViewModelTests {
 
         let config = vm.buildConfiguration()
         #expect(config.genericMachineIdentifierData == nil)
+    }
+
+    // MARK: - Overwrite Warning
+
+    @Test("shouldShowOverwriteWarning is false when source is localFile")
+    func overwriteWarningFalseForLocalFile() {
+        let vm = VMCreationViewModel()
+        vm.ipswSource = .localFile
+        vm.ipswDownloadPath = "/usr/bin/true"  // exists on disk
+
+        #expect(vm.shouldShowOverwriteWarning == false)
+    }
+
+    @Test("shouldShowOverwriteWarning is false when file does not exist at path")
+    func overwriteWarningFalseWhenFileDoesNotExist() {
+        let vm = VMCreationViewModel()
+        vm.ipswSource = .downloadLatest
+        vm.ipswDownloadPath = "/nonexistent/path/RestoreImage.ipsw"
+
+        #expect(vm.shouldShowOverwriteWarning == false)
+    }
+
+    @Test("shouldShowOverwriteWarning is true when download source and file exists")
+    func overwriteWarningTrueWhenDownloadAndFileExists() {
+        let vm = VMCreationViewModel()
+        vm.ipswSource = .downloadLatest
+        vm.ipswDownloadPath = "/usr/bin/true"  // exists on disk
+
+        #expect(vm.shouldShowOverwriteWarning == true)
+    }
+
+    @Test("confirmOverwrite suppresses warning for current path")
+    func confirmOverwriteSuppressesWarning() {
+        let vm = VMCreationViewModel()
+        vm.ipswSource = .downloadLatest
+        vm.ipswDownloadPath = "/usr/bin/true"
+        #expect(vm.shouldShowOverwriteWarning == true)
+
+        vm.confirmOverwrite()
+        #expect(vm.shouldShowOverwriteWarning == false)
+    }
+
+    @Test("changing path after confirmOverwrite resets warning")
+    func changingPathResetsConfirmation() {
+        let vm = VMCreationViewModel()
+        vm.ipswSource = .downloadLatest
+        vm.ipswDownloadPath = "/usr/bin/true"
+        vm.confirmOverwrite()
+        #expect(vm.shouldShowOverwriteWarning == false)
+
+        // Change to another existing path — warning should reappear
+        vm.ipswDownloadPath = "/usr/bin/false"
+        #expect(vm.shouldShowOverwriteWarning == true)
+    }
+
+    @Test("useExistingDownloadFile switches source to localFile and copies path")
+    func useExistingDownloadFileSwitchesSource() {
+        let vm = VMCreationViewModel()
+        vm.ipswSource = .downloadLatest
+        vm.ipswDownloadPath = "/usr/bin/true"
+
+        vm.useExistingDownloadFile()
+
+        #expect(vm.ipswSource == .localFile)
+        #expect(vm.ipswPath == "/usr/bin/true")
+    }
+
+    @Test("canAdvance is false when overwrite warning is unresolved")
+    func canAdvanceFalseWithUnresolvedOverwriteWarning() {
+        let vm = VMCreationViewModel()
+        vm.currentStep = .bootConfig
+        vm.selectedOS = .macOS
+        vm.ipswSource = .downloadLatest
+        vm.ipswDownloadPath = "/usr/bin/true"  // exists on disk → triggers warning
+
+        #expect(vm.shouldShowOverwriteWarning == true)
+        #expect(vm.canAdvance == false)
+    }
+
+    @Test("canAdvance is true after confirming overwrite")
+    func canAdvanceTrueAfterConfirmingOverwrite() {
+        let vm = VMCreationViewModel()
+        vm.currentStep = .bootConfig
+        vm.selectedOS = .macOS
+        vm.ipswSource = .downloadLatest
+        vm.ipswDownloadPath = "/usr/bin/true"  // exists on disk → triggers warning
+        #expect(vm.canAdvance == false)
+
+        vm.confirmOverwrite()
+        #expect(vm.shouldShowOverwriteWarning == false)
+        #expect(vm.canAdvance == true)
+    }
+
+    @Test("ipswDownloadPathFileExists is false when path is nil")
+    func fileExistsFalseWhenPathNil() {
+        let vm = VMCreationViewModel()
+        vm.ipswDownloadPath = nil
+
+        #expect(vm.ipswDownloadPathFileExists == false)
     }
 }
