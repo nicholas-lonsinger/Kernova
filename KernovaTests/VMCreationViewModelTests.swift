@@ -73,6 +73,7 @@ struct VMCreationViewModelTests {
         // macOS with downloadLatest but no download path is invalid
         vm.selectedOS = .macOS
         vm.ipswSource = .downloadLatest
+        vm.ipswDownloadPath = nil
         #expect(vm.canAdvance == false)
 
         // macOS with downloadLatest and download path is valid
@@ -102,6 +103,22 @@ struct VMCreationViewModelTests {
 
         // With download path — valid
         vm.ipswDownloadPath = "/Users/user/Downloads/RestoreImage.ipsw"
+        #expect(vm.canAdvance == true)
+    }
+
+    @Test("ipswDownloadPath defaults to ~/Downloads/RestoreImage.ipsw")
+    func ipswDownloadPathHasDefault() {
+        let vm = VMCreationViewModel()
+        #expect(vm.ipswDownloadPath == VMCreationViewModel.defaultIPSWDownloadPath)
+    }
+
+    @Test("canAdvance is true by default for macOS downloadLatest")
+    func canAdvanceDefaultMacOSDownloadLatest() {
+        let vm = VMCreationViewModel()
+        vm.currentStep = .bootConfig
+        vm.selectedOS = .macOS
+        vm.ipswSource = .downloadLatest
+        // Default ipswDownloadPath is non-nil, so canAdvance should be true
         #expect(vm.canAdvance == true)
     }
 

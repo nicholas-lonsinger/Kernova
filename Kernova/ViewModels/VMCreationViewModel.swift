@@ -44,7 +44,7 @@ final class VMCreationViewModel {
     var selectedBootMode: VMBootMode = .efi
     var ipswSource: IPSWSource = .downloadLatest
     var ipswPath: String?
-    var ipswDownloadPath: String?
+    var ipswDownloadPath: String? = VMCreationViewModel.defaultIPSWDownloadPath
     var isoPath: String?
     var kernelPath: String?
     var initrdPath: String?
@@ -122,6 +122,14 @@ final class VMCreationViewModel {
         guard let currentIndex = allSteps.firstIndex(of: currentStep),
               currentIndex > 0 else { return nil }
         return allSteps[currentIndex - 1]
+    }
+
+    // MARK: - Defaults
+
+    static var defaultIPSWDownloadPath: String {
+        FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Downloads/RestoreImage.ipsw")
+            .path
     }
 
     // MARK: - Apply Defaults
