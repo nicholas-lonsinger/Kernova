@@ -7,29 +7,23 @@ struct IPSWService: Sendable {
 
     private static let logger = Logger(subsystem: "com.kernova.app", category: "IPSWService")
 
-    /// Fetches metadata about the latest supported macOS restore image.
-    ///
-    /// - Returns: The `VZMacOSRestoreImage` for the latest compatible macOS version.
+    // MARK: - Protocol Methods
+
     #if arch(arm64)
-    func fetchLatestSupportedImage() async throws -> VZMacOSRestoreImage {
+    /// Fetches the download URL for the latest supported macOS restore image.
+    func fetchLatestRestoreImageURL() async throws -> URL {
         Self.logger.info("Fetching latest supported macOS restore image...")
-        return try await VZMacOSRestoreImage.latestSupported
+        let restoreImage = try await VZMacOSRestoreImage.latestSupported
+        return restoreImage.url
     }
 
-    /// Downloads a macOS restore image to the specified URL.
-    ///
-    /// - Parameters:
-    ///   - restoreImage: The restore image metadata to download.
-    ///   - destinationURL: The local file URL to save the IPSW to.
-    ///   - progressHandler: Called periodically with (fraction, totalBytesWritten, totalBytesExpectedToWrite).
+    /// Downloads a macOS restore image from a remote URL to the specified destination.
     func downloadRestoreImage(
-        _ restoreImage: VZMacOSRestoreImage,
+        from remoteURL: URL,
         to destinationURL: URL,
         progressHandler: @MainActor @Sendable @escaping (Double, Int64, Int64) -> Void
     ) async throws {
-        let downloadURL = restoreImage.url
-
-        Self.logger.info("Downloading restore image from \(downloadURL)")
+        Self.logger.info("Downloading restore image from \(remoteURL)")
 
         // Create delegate and session before entering the continuation so that
         // the cancellation handler can call invalidateAndCancel() on the session.
@@ -44,7 +38,7 @@ struct IPSWService: Sendable {
         let tempURL: URL = try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { continuation in
                 delegate.continuation = continuation
-                session.downloadTask(with: downloadURL).resume()
+                session.downloadTask(with: remoteURL).resume()
             }
         } onCancel: {
             Self.logger.info("Download cancelled — invalidating URLSession")
@@ -66,6 +60,10 @@ struct IPSWService: Sendable {
     }
     #endif
 }
+
+// MARK: - IPSWProviding
+
+extension IPSWService: IPSWProviding {}
 
 // MARK: - Session Delegate
 

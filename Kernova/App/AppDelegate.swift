@@ -45,14 +45,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Task { @MainActor in
             for instance in runningInstances {
                 do {
-                    try await viewModel.virtualizationService.save(instance)
-                    try viewModel.storageService.saveConfiguration(
-                        instance.configuration,
-                        to: instance.bundleURL
-                    )
+                    try await viewModel.trySave(instance)
+                    viewModel.saveConfiguration(for: instance)
                 } catch {
                     // Best-effort save; force-stop if save fails
-                    try? await viewModel.virtualizationService.forceStop(instance)
+                    try? await viewModel.tryForceStop(instance)
                 }
             }
             NSApplication.shared.reply(toApplicationShouldTerminate: true)

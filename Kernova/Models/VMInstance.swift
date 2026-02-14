@@ -68,6 +68,28 @@ final class VMInstance: Identifiable {
         vm.delegate = adapter
         self.delegateAdapter = adapter
     }
+
+    // MARK: - State Helpers
+
+    /// Releases the VZVirtualMachine reference and marks the VM as stopped.
+    func resetToStopped() {
+        status = .stopped
+        virtualMachine = nil
+    }
+
+    /// Creates a VZVirtualMachine, assigns it, and wires up the delegate. Returns the VM.
+    @discardableResult
+    func attachVirtualMachine(from vzConfig: VZVirtualMachineConfiguration) -> VZVirtualMachine {
+        let vm = VZVirtualMachine(configuration: vzConfig)
+        virtualMachine = vm
+        setupDelegate()
+        return vm
+    }
+
+    /// Removes the persisted save file from the bundle, if it exists.
+    func removeSaveFile() {
+        try? FileManager.default.removeItem(at: saveFileURL)
+    }
 }
 
 // MARK: - VZVirtualMachineDelegate Adapter
@@ -89,8 +111,7 @@ private final class VMDelegateAdapter: NSObject, VZVirtualMachineDelegate {
                 Self.logger.warning("guestDidStop received but VMInstance has been deallocated")
                 return
             }
-            instance.status = .stopped
-            instance.virtualMachine = nil
+            instance.resetToStopped()
         }
     }
 
