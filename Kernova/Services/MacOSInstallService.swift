@@ -68,9 +68,7 @@ final class MacOSInstallService {
             bundleURL: instance.bundleURL
         )
 
-        let vm = VZVirtualMachine(configuration: vzConfig)
-        instance.virtualMachine = vm
-        instance.setupDelegate()
+        let vm = instance.attachVirtualMachine(from: vzConfig)
 
         // 5. Check for cancellation before starting the installer
         try Task.checkCancellation()
@@ -101,8 +99,7 @@ final class MacOSInstallService {
             installerProgress.cancel()
         }
 
-        instance.status = .stopped
-        instance.virtualMachine = nil
+        instance.resetToStopped()
         instance.installState?.currentPhase = .installing(progress: 1.0)
 
         Self.logger.info("macOS installation completed for '\(instance.name)'")
@@ -139,6 +136,10 @@ final class MacOSInstallService {
     }
     #endif
 }
+
+// MARK: - MacOSInstallProviding
+
+extension MacOSInstallService: MacOSInstallProviding {}
 
 // MARK: - Errors
 

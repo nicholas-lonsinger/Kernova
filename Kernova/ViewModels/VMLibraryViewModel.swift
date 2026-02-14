@@ -11,11 +11,9 @@ final class VMLibraryViewModel {
 
     // MARK: - Services
 
-    let storageService = VMStorageService()
-    let virtualizationService = VirtualizationService()
-    let diskImageService = DiskImageService()
-    let ipswService = IPSWService()
-    let installService = MacOSInstallService()
+    let storageService: any VMStorageProviding
+    let diskImageService: any DiskImageProviding
+    let lifecycle: VMLifecycleCoordinator
 
     // MARK: - State
 
@@ -29,11 +27,7 @@ final class VMLibraryViewModel {
 
     // MARK: - Directory Watcher
 
-    /// `nonisolated(unsafe)` because `DispatchSource` is not `Sendable` and we need
-    /// to cancel it in `deinit` (which is nonisolated). Safe because it is only
-    /// written in `startDirectoryWatcher()` (called from `init`) and read in `deinit`.
-    nonisolated(unsafe) private var directorySource: DispatchSourceFileSystemObject?
-    private var debounceTask: Task<Void, Never>?
+    private var directoryWatcher: VMDirectoryWatcher?
 
     var selectedInstance: VMInstance? {
         instances.first { $0.id == selectedID }
@@ -41,13 +35,23 @@ final class VMLibraryViewModel {
 
     // MARK: - Initialization
 
-    init() {
+    init(
+        storageService: any VMStorageProviding = VMStorageService(),
+        diskImageService: any DiskImageProviding = DiskImageService(),
+        virtualizationService: any VirtualizationProviding = VirtualizationService(),
+        installService: any MacOSInstallProviding = MacOSInstallService(),
+        ipswService: any IPSWProviding = IPSWService()
+    ) {
+        self.storageService = storageService
+        self.diskImageService = diskImageService
+        self.lifecycle = VMLifecycleCoordinator(
+            virtualizationService: virtualizationService,
+            installService: installService,
+            ipswService: ipswService
+        )
+
         loadVMs()
         startDirectoryWatcher()
-    }
-
-    deinit {
-        directorySource?.cancel()
     }
 
     // MARK: - Load
@@ -122,7 +126,15 @@ final class VMLibraryViewModel {
             #if arch(arm64)
             if config.guestOS == .macOS {
                 instance.installTask = Task {
-                    await installMacOS(on: instance, wizard: wizard)
+                    do {
+                        try await lifecycle.installMacOS(
+                            on: instance,
+                            wizard: wizard,
+                            storageService: storageService
+                        )
+                    } catch {
+                        presentError(error)
+                    }
                 }
             }
             #endif
@@ -136,71 +148,6 @@ final class VMLibraryViewModel {
     // MARK: - macOS Installation
 
     #if arch(arm64)
-    private func installMacOS(on instance: VMInstance, wizard: VMCreationViewModel) async {
-        do {
-            let ipswURL: URL
-
-            switch wizard.ipswSource {
-            case .downloadLatest:
-                // Set up two-step install state before changing status
-                instance.installState = MacOSInstallState(
-                    hasDownloadStep: true,
-                    currentPhase: .downloading(progress: 0, bytesWritten: 0, totalBytes: 0)
-                )
-                instance.status = .installing
-
-                // Download the latest IPSW
-                let restoreImage = try await ipswService.fetchLatestSupportedImage()
-                try await ipswService.downloadRestoreImage(
-                    restoreImage,
-                    to: instance.restoreImageURL
-                ) { progress, bytesWritten, totalBytes in
-                    instance.installState?.currentPhase = .downloading(
-                        progress: progress,
-                        bytesWritten: bytesWritten,
-                        totalBytes: totalBytes
-                    )
-                }
-
-                // Mark download complete, transition to install phase
-                instance.installState?.downloadCompleted = true
-                instance.installState?.currentPhase = .installing(progress: 0)
-                ipswURL = instance.restoreImageURL
-
-            case .localFile:
-                guard let path = wizard.ipswPath else {
-                    throw IPSWError.noDownloadURL
-                }
-                ipswURL = URL(fileURLWithPath: path)
-
-                // Local file: single-step install (no download)
-                instance.installState = MacOSInstallState(
-                    hasDownloadStep: false,
-                    currentPhase: .installing(progress: 0)
-                )
-                instance.status = .installing
-            }
-
-            // Run macOS installation
-            try await installService.install(
-                into: instance,
-                restoreImageURL: ipswURL
-            ) { @MainActor progress in
-                instance.installState?.currentPhase = .installing(progress: progress)
-            }
-        } catch is CancellationError {
-            Self.logger.info("macOS installation cancelled for '\(instance.name)'")
-        } catch let error as NSError where error.domain == NSURLErrorDomain && error.code == NSURLErrorCancelled {
-            Self.logger.info("IPSW download cancelled for '\(instance.name)'")
-        } catch {
-            instance.status = .error
-            instance.errorMessage = error.localizedDescription
-            presentError(error)
-        }
-
-        instance.installTask = nil
-    }
-
     /// Cancels an in-progress macOS installation, cleans up the VM bundle, and removes it from the library.
     func cancelInstallation(_ instance: VMInstance) {
         Self.logger.info("Cancelling installation for '\(instance.name)'")
@@ -234,7 +181,7 @@ final class VMLibraryViewModel {
 
     func start(_ instance: VMInstance) async {
         do {
-            try await virtualizationService.start(instance)
+            try await lifecycle.start(instance)
         } catch {
             presentError(error)
         }
@@ -242,7 +189,7 @@ final class VMLibraryViewModel {
 
     func stop(_ instance: VMInstance) {
         do {
-            try virtualizationService.stop(instance)
+            try lifecycle.stop(instance)
         } catch {
             presentError(error)
         }
@@ -250,7 +197,7 @@ final class VMLibraryViewModel {
 
     func forceStop(_ instance: VMInstance) async {
         do {
-            try await virtualizationService.forceStop(instance)
+            try await lifecycle.forceStop(instance)
         } catch {
             presentError(error)
         }
@@ -258,7 +205,7 @@ final class VMLibraryViewModel {
 
     func pause(_ instance: VMInstance) async {
         do {
-            try await virtualizationService.pause(instance)
+            try await lifecycle.pause(instance)
         } catch {
             presentError(error)
         }
@@ -266,7 +213,7 @@ final class VMLibraryViewModel {
 
     func resume(_ instance: VMInstance) async {
         do {
-            try await virtualizationService.resume(instance)
+            try await lifecycle.resume(instance)
         } catch {
             presentError(error)
         }
@@ -274,10 +221,20 @@ final class VMLibraryViewModel {
 
     func save(_ instance: VMInstance) async {
         do {
-            try await virtualizationService.save(instance)
+            try await lifecycle.save(instance)
         } catch {
             presentError(error)
         }
+    }
+
+    /// Saves VM state. Throws on failure (used by save-on-quit in AppDelegate).
+    func trySave(_ instance: VMInstance) async throws {
+        try await lifecycle.save(instance)
+    }
+
+    /// Force-stops a VM. Throws on failure (used by save-on-quit fallback in AppDelegate).
+    func tryForceStop(_ instance: VMInstance) async throws {
+        try await lifecycle.forceStop(instance)
     }
 
     // MARK: - Delete
@@ -314,49 +271,17 @@ final class VMLibraryViewModel {
 
     // MARK: - Directory Watcher
 
-    /// Watches the VMs directory for external changes (e.g., Trash restore via Finder "Put Back")
-    /// and reconciles the in-memory instances array with what's on disk.
     private func startDirectoryWatcher() {
         guard let vmsDir = try? storageService.vmsDirectory else {
             Self.logger.warning("Could not resolve VMs directory for file system watcher")
             return
         }
 
-        let fd = open(vmsDir.path, O_EVTONLY)
-        guard fd >= 0 else {
-            Self.logger.warning("Could not open VMs directory for monitoring: \(vmsDir.path)")
-            return
+        let watcher = VMDirectoryWatcher { [weak self] in
+            self?.reconcileWithDisk()
         }
-
-        let source = DispatchSource.makeFileSystemObjectSource(
-            fileDescriptor: fd,
-            eventMask: .write,
-            queue: .main
-        )
-
-        source.setEventHandler { [weak self] in
-            self?.scheduleReconciliation()
-        }
-
-        source.setCancelHandler {
-            close(fd)
-        }
-
-        source.resume()
-        directorySource = source
-
-        Self.logger.info("Started directory watcher on \(vmsDir.path)")
-    }
-
-    /// Debounces rapid FS events (e.g., Finder "Put Back" touches multiple files) into a
-    /// single reconciliation pass after 0.5 seconds of quiet.
-    private func scheduleReconciliation() {
-        debounceTask?.cancel()
-        debounceTask = Task {
-            try? await Task.sleep(for: .milliseconds(500))
-            guard !Task.isCancelled else { return }
-            reconcileWithDisk()
-        }
+        watcher.start(directory: vmsDir)
+        directoryWatcher = watcher
     }
 
     /// Diffs on-disk VM bundles against in-memory instances and adds/removes as needed.
@@ -416,7 +341,7 @@ final class VMLibraryViewModel {
 
     // MARK: - Error Handling
 
-    private func presentError(_ error: Error) {
+    func presentError(_ error: Error) {
         errorMessage = error.localizedDescription
         showError = true
         Self.logger.error("\(error.localizedDescription)")

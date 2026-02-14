@@ -100,6 +100,10 @@ struct VMStorageService: Sendable {
     }
 }
 
+// MARK: - VMStorageProviding
+
+extension VMStorageService: VMStorageProviding {}
+
 // MARK: - Errors
 
 enum VMStorageError: LocalizedError {

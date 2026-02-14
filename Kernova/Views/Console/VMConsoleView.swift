@@ -3,7 +3,6 @@ import SwiftUI
 /// Console view with the VM display and lifecycle control toolbar.
 struct VMConsoleView: View {
     @Bindable var instance: VMInstance
-    @Bindable var viewModel: VMLibraryViewModel
 
     var body: some View {
         VStack(spacing: 0) {

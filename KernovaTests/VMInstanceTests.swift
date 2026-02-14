@@ -1,0 +1,107 @@
+import Testing
+import Foundation
+@testable import Kernova
+
+@Suite("VMInstance Tests")
+@MainActor
+struct VMInstanceTests {
+
+    private func makeInstance(status: VMStatus = .stopped) -> VMInstance {
+        let config = VMConfiguration(
+            name: "Test VM",
+            guestOS: .linux,
+            bootMode: .efi
+        )
+        let bundleURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(config.id.uuidString, isDirectory: true)
+        return VMInstance(configuration: config, bundleURL: bundleURL, status: status)
+    }
+
+    // MARK: - resetToStopped
+
+    @Test("resetToStopped sets status to stopped and clears virtualMachine")
+    func resetToStopped() {
+        let instance = makeInstance(status: .running)
+        // Simulate having a VM reference (we can't create a real VZVirtualMachine)
+        #expect(instance.status == .running)
+
+        instance.resetToStopped()
+
+        #expect(instance.status == .stopped)
+        #expect(instance.virtualMachine == nil)
+    }
+
+    @Test("resetToStopped is idempotent when already stopped")
+    func resetToStoppedIdempotent() {
+        let instance = makeInstance(status: .stopped)
+        instance.resetToStopped()
+        #expect(instance.status == .stopped)
+        #expect(instance.virtualMachine == nil)
+    }
+
+    // MARK: - removeSaveFile
+
+    @Test("removeSaveFile is a no-op when no save file exists")
+    func removeSaveFileNoOp() {
+        let instance = makeInstance()
+        // Should not throw — silently succeeds
+        instance.removeSaveFile()
+        #expect(!instance.hasSaveFile)
+    }
+
+    @Test("removeSaveFile deletes an existing save file")
+    func removeSaveFileDeletesFile() throws {
+        let instance = makeInstance()
+
+        // Create the bundle directory and a fake save file
+        try FileManager.default.createDirectory(
+            at: instance.bundleURL,
+            withIntermediateDirectories: true
+        )
+        FileManager.default.createFile(
+            atPath: instance.saveFileURL.path,
+            contents: Data("fake save".utf8)
+        )
+
+        defer { try? FileManager.default.removeItem(at: instance.bundleURL) }
+
+        #expect(FileManager.default.fileExists(atPath: instance.saveFileURL.path))
+
+        instance.removeSaveFile()
+
+        #expect(!FileManager.default.fileExists(atPath: instance.saveFileURL.path))
+    }
+
+    // MARK: - isColdPaused
+
+    @Test("isColdPaused is true when paused with no virtualMachine")
+    func isColdPausedTrue() {
+        let instance = makeInstance(status: .paused)
+        #expect(instance.virtualMachine == nil)
+        #expect(instance.isColdPaused == true)
+    }
+
+    @Test("isColdPaused is false when stopped")
+    func isColdPausedFalseWhenStopped() {
+        let instance = makeInstance(status: .stopped)
+        #expect(instance.isColdPaused == false)
+    }
+
+    @Test("isColdPaused is false when running")
+    func isColdPausedFalseWhenRunning() {
+        let instance = makeInstance(status: .running)
+        #expect(instance.isColdPaused == false)
+    }
+
+    // MARK: - Bundle Paths
+
+    @Test("Bundle path URLs are correctly derived from bundleURL")
+    func bundlePaths() {
+        let instance = makeInstance()
+
+        #expect(instance.diskImageURL.lastPathComponent == "Disk.asif")
+        #expect(instance.auxiliaryStorageURL.lastPathComponent == "AuxiliaryStorage")
+        #expect(instance.saveFileURL.lastPathComponent == "SaveFile.vzvmsave")
+        #expect(instance.restoreImageURL.lastPathComponent == "RestoreImage.ipsw")
+    }
+}

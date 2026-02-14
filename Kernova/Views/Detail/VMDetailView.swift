@@ -21,7 +21,7 @@ struct VMDetailView: View {
                 }
 
             case .running, .paused:
-                VMConsoleView(instance: instance, viewModel: viewModel)
+                VMConsoleView(instance: instance)
 
             default:
                 transitionView

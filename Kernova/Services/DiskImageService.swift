@@ -51,6 +51,10 @@ struct DiskImageService: Sendable {
     }
 }
 
+// MARK: - DiskImageProviding
+
+extension DiskImageService: DiskImageProviding {}
+
 // MARK: - Errors
 
 enum DiskImageError: LocalizedError {
