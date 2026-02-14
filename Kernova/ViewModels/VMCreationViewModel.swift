@@ -44,6 +44,7 @@ final class VMCreationViewModel {
     var selectedBootMode: VMBootMode = .efi
     var ipswSource: IPSWSource = .downloadLatest
     var ipswPath: String?
+    var ipswDownloadPath: String?
     var isoPath: String?
     var kernelPath: String?
     var initrdPath: String?
@@ -86,7 +87,10 @@ final class VMCreationViewModel {
     private var bootConfigValid: Bool {
         switch selectedOS {
         case .macOS:
-            ipswSource == .downloadLatest || ipswPath != nil
+            switch ipswSource {
+            case .downloadLatest: ipswDownloadPath != nil
+            case .localFile: ipswPath != nil
+            }
         case .linux:
             switch selectedBootMode {
             case .efi: isoPath != nil

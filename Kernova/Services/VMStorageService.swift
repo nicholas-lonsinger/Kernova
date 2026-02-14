@@ -7,7 +7,7 @@ import os
 /// - `config.json` — Serialized `VMConfiguration`
 /// - `Disk.asif` — ASIF sparse disk image
 /// - macOS-specific files: `AuxiliaryStorage`, `HardwareModel`, `MachineIdentifier`
-/// - Optional: `RestoreImage.ipsw`, `SaveFile.vzvmsave`
+/// - Optional: `SaveFile.vzvmsave`
 struct VMStorageService: Sendable {
 
     private static let logger = Logger(subsystem: "com.kernova.app", category: "VMStorageService")

@@ -51,7 +51,6 @@ final class VMInstance: Identifiable {
     var auxiliaryStorageURL: URL { bundleLayout.auxiliaryStorageURL }
     var hardwareModelURL: URL { bundleLayout.hardwareModelURL }
     var machineIdentifierURL: URL { bundleLayout.machineIdentifierURL }
-    var restoreImageURL: URL { bundleLayout.restoreImageURL }
     var saveFileURL: URL { bundleLayout.saveFileURL }
     var hasSaveFile: Bool { bundleLayout.hasSaveFile }
 

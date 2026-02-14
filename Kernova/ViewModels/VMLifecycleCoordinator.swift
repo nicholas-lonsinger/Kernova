@@ -64,6 +64,11 @@ final class VMLifecycleCoordinator {
 
             switch wizard.ipswSource {
             case .downloadLatest:
+                guard let downloadPath = wizard.ipswDownloadPath else {
+                    throw IPSWError.noDownloadURL
+                }
+                let downloadDestination = URL(fileURLWithPath: downloadPath)
+
                 // Set up two-step install state before changing status
                 instance.installState = MacOSInstallState(
                     hasDownloadStep: true,
@@ -71,11 +76,11 @@ final class VMLifecycleCoordinator {
                 )
                 instance.status = .installing
 
-                // Download the latest IPSW
+                // Download the latest IPSW to user-chosen location
                 let remoteURL = try await ipswService.fetchLatestRestoreImageURL()
                 try await ipswService.downloadRestoreImage(
                     from: remoteURL,
-                    to: instance.restoreImageURL
+                    to: downloadDestination
                 ) { progress, bytesWritten, totalBytes in
                     instance.installState?.currentPhase = .downloading(
                         progress: progress,
@@ -87,7 +92,7 @@ final class VMLifecycleCoordinator {
                 // Mark download complete, transition to install phase
                 instance.installState?.downloadCompleted = true
                 instance.installState?.currentPhase = .installing(progress: 0)
-                ipswURL = instance.restoreImageURL
+                ipswURL = downloadDestination
 
             case .localFile:
                 guard let path = wizard.ipswPath else {

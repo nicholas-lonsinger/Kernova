@@ -28,10 +28,6 @@ struct VMBundleLayout: Sendable {
         bundleURL.appendingPathComponent("EFIVariableStore")
     }
 
-    var restoreImageURL: URL {
-        bundleURL.appendingPathComponent("RestoreImage.ipsw")
-    }
-
     var saveFileURL: URL {
         bundleURL.appendingPathComponent("SaveFile.vzvmsave")
     }

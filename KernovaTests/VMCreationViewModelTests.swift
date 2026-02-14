@@ -70,9 +70,13 @@ struct VMCreationViewModelTests {
         let vm = VMCreationViewModel()
         vm.currentStep = .bootConfig
 
-        // macOS with downloadLatest is valid
+        // macOS with downloadLatest but no download path is invalid
         vm.selectedOS = .macOS
         vm.ipswSource = .downloadLatest
+        #expect(vm.canAdvance == false)
+
+        // macOS with downloadLatest and download path is valid
+        vm.ipswDownloadPath = "/Users/user/Downloads/RestoreImage.ipsw"
         #expect(vm.canAdvance == true)
 
         // macOS with localFile but no path is invalid
@@ -82,6 +86,22 @@ struct VMCreationViewModelTests {
 
         // macOS with localFile and path is valid
         vm.ipswPath = "/path/to/restore.ipsw"
+        #expect(vm.canAdvance == true)
+    }
+
+    @Test("canAdvance at bootConfig for macOS downloadLatest requires ipswDownloadPath")
+    func canAdvanceBootConfigMacOSDownloadLatest() {
+        let vm = VMCreationViewModel()
+        vm.currentStep = .bootConfig
+        vm.selectedOS = .macOS
+        vm.ipswSource = .downloadLatest
+
+        // Without download path — invalid
+        vm.ipswDownloadPath = nil
+        #expect(vm.canAdvance == false)
+
+        // With download path — valid
+        vm.ipswDownloadPath = "/Users/user/Downloads/RestoreImage.ipsw"
         #expect(vm.canAdvance == true)
     }
 

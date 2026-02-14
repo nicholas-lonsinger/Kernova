@@ -37,8 +37,11 @@ struct ReviewStep: View {
                         LabeledContent("IPSW Source") {
                             Text(creationVM.ipswSource == .downloadLatest ? "Download Latest" : "Local File")
                         }
-                        if let path = creationVM.ipswPath {
+                        if creationVM.ipswSource == .localFile, let path = creationVM.ipswPath {
                             LabeledContent("File", value: URL(fileURLWithPath: path).lastPathComponent)
+                        }
+                        if creationVM.ipswSource == .downloadLatest, let path = creationVM.ipswDownloadPath {
+                            LabeledContent("Save to", value: abbreviateWithTilde(path))
                         }
                     }
                 }
@@ -56,5 +59,13 @@ struct ReviewStep: View {
             }
             .formStyle(.grouped)
         }
+    }
+
+    private func abbreviateWithTilde(_ path: String) -> String {
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        if path.hasPrefix(home) {
+            return "~" + path.dropFirst(home.count)
+        }
+        return path
     }
 }

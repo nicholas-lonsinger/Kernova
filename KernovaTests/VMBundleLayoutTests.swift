@@ -44,13 +44,6 @@ struct VMBundleLayoutTests {
         #expect(layout.efiVariableStoreURL.deletingLastPathComponent() == bundleURL)
     }
 
-    @Test("restoreImageURL appends RestoreImage.ipsw to bundle path")
-    func restoreImageURL() {
-        let layout = VMBundleLayout(bundleURL: bundleURL)
-        #expect(layout.restoreImageURL.lastPathComponent == "RestoreImage.ipsw")
-        #expect(layout.restoreImageURL.deletingLastPathComponent() == bundleURL)
-    }
-
     @Test("saveFileURL appends SaveFile.vzvmsave to bundle path")
     func saveFileURL() {
         let layout = VMBundleLayout(bundleURL: bundleURL)
