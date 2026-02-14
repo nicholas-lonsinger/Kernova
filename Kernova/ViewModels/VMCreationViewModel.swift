@@ -44,7 +44,15 @@ final class VMCreationViewModel {
     var selectedBootMode: VMBootMode = .efi
     var ipswSource: IPSWSource = .downloadLatest
     var ipswPath: String?
-    var ipswDownloadPath: String? = VMCreationViewModel.defaultIPSWDownloadPath
+    var ipswDownloadPath: String? = VMCreationViewModel.defaultIPSWDownloadPath {
+        didSet {
+            // Reset overwrite confirmation when the download destination changes
+            if ipswDownloadPath != confirmedOverwritePath {
+                confirmedOverwritePath = nil
+            }
+        }
+    }
+    private var confirmedOverwritePath: String?
     var isoPath: String?
     var kernelPath: String?
     var initrdPath: String?
@@ -88,7 +96,7 @@ final class VMCreationViewModel {
         switch selectedOS {
         case .macOS:
             switch ipswSource {
-            case .downloadLatest: ipswDownloadPath != nil
+            case .downloadLatest: ipswDownloadPath != nil && !shouldShowOverwriteWarning
             case .localFile: ipswPath != nil
             }
         case .linux:
@@ -138,6 +146,28 @@ final class VMCreationViewModel {
         cpuCount = selectedOS.defaultCPUCount
         memoryInGB = selectedOS.defaultMemoryInGB
         diskSizeInGB = selectedOS.defaultDiskSizeInGB
+    }
+
+    // MARK: - Overwrite Warning
+
+    var ipswDownloadPathFileExists: Bool {
+        guard let path = ipswDownloadPath else { return false }
+        return FileManager.default.fileExists(atPath: path)
+    }
+
+    var shouldShowOverwriteWarning: Bool {
+        ipswSource == .downloadLatest
+            && ipswDownloadPathFileExists
+            && confirmedOverwritePath != ipswDownloadPath
+    }
+
+    func confirmOverwrite() {
+        confirmedOverwritePath = ipswDownloadPath
+    }
+
+    func useExistingDownloadFile() {
+        ipswSource = .localFile
+        ipswPath = ipswDownloadPath
     }
 
     // MARK: - Build Configuration
