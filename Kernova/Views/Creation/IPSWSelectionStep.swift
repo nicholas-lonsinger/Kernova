@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Step 2 (macOS): Choose an IPSW restore image source.
 struct IPSWSelectionStep: View {
@@ -22,8 +23,7 @@ struct IPSWSelectionStep: View {
                     icon: "arrow.down.circle",
                     isSelected: creationVM.ipswSource == .downloadLatest
                 ) {
-                    creationVM.ipswSource = .downloadLatest
-                    creationVM.ipswPath = nil
+                    selectDownloadDestination()
                 }
 
                 sourceButton(
@@ -32,24 +32,31 @@ struct IPSWSelectionStep: View {
                     icon: "folder",
                     isSelected: creationVM.ipswSource == .localFile
                 ) {
-                    creationVM.ipswSource = .localFile
                     selectIPSWFile()
                 }
             }
 
+            if creationVM.ipswSource == .downloadLatest, let path = creationVM.ipswDownloadPath {
+                pathBadge(path: path)
+            }
+
             if creationVM.ipswSource == .localFile, let path = creationVM.ipswPath {
-                HStack {
-                    Image(systemName: "doc.fill")
-                        .foregroundStyle(.secondary)
-                    Text(URL(fileURLWithPath: path).lastPathComponent)
-                        .font(.caption)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                }
-                .padding(8)
-                .background(Color.secondary.opacity(0.1), in: RoundedRectangle(cornerRadius: 6))
+                pathBadge(path: path)
             }
         }
+    }
+
+    private func pathBadge(path: String) -> some View {
+        HStack {
+            Image(systemName: "doc.fill")
+                .foregroundStyle(.secondary)
+            Text(abbreviateWithTilde(path))
+                .font(.caption)
+                .lineLimit(1)
+                .truncationMode(.middle)
+        }
+        .padding(8)
+        .background(Color.secondary.opacity(0.1), in: RoundedRectangle(cornerRadius: 6))
     }
 
     private func sourceButton(
@@ -92,15 +99,39 @@ struct IPSWSelectionStep: View {
         .buttonStyle(.plain)
     }
 
+    private func selectDownloadDestination() {
+        let panel = NSSavePanel()
+        panel.title = "Choose Download Location"
+        panel.directoryURL = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
+        panel.nameFieldStringValue = "RestoreImage.ipsw"
+        panel.allowedContentTypes = [UTType(filenameExtension: "ipsw")!]
+
+        if panel.runModal() == .OK, let url = panel.url {
+            creationVM.ipswSource = .downloadLatest
+            creationVM.ipswDownloadPath = url.path
+            creationVM.ipswPath = nil
+        }
+    }
+
     private func selectIPSWFile() {
         let panel = NSOpenPanel()
         panel.title = "Select macOS Restore Image"
-        panel.allowedContentTypes = [.init(filenameExtension: "ipsw")!]
+        panel.allowedContentTypes = [UTType(filenameExtension: "ipsw")!]
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = false
 
         if panel.runModal() == .OK, let url = panel.url {
+            creationVM.ipswSource = .localFile
             creationVM.ipswPath = url.path
+            creationVM.ipswDownloadPath = nil
         }
+    }
+
+    private func abbreviateWithTilde(_ path: String) -> String {
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        if path.hasPrefix(home) {
+            return "~" + path.dropFirst(home.count)
+        }
+        return path
     }
 }

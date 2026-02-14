@@ -102,6 +102,5 @@ struct VMInstanceTests {
         #expect(instance.diskImageURL.lastPathComponent == "Disk.asif")
         #expect(instance.auxiliaryStorageURL.lastPathComponent == "AuxiliaryStorage")
         #expect(instance.saveFileURL.lastPathComponent == "SaveFile.vzvmsave")
-        #expect(instance.restoreImageURL.lastPathComponent == "RestoreImage.ipsw")
     }
 }

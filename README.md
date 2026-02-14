@@ -56,7 +56,6 @@ Each VM is stored as a directory under `~/Library/Application Support/Kernova/VM
   AuxiliaryStorage      # macOS auxiliary storage
   HardwareModel         # VZMacHardwareModel data
   MachineIdentifier     # VZMacMachineIdentifier data
-  RestoreImage.ipsw     # Downloaded IPSW (macOS guests)
   SaveFile.vzvmsave     # Saved VM state (suspend/resume)
 ```
 
