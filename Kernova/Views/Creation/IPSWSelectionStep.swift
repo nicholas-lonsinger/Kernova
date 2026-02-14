@@ -23,7 +23,10 @@ struct IPSWSelectionStep: View {
                     icon: "arrow.down.circle",
                     isSelected: creationVM.ipswSource == .downloadLatest
                 ) {
-                    selectDownloadDestination()
+                    creationVM.ipswSource = .downloadLatest
+                    if creationVM.ipswDownloadPath == nil {
+                        creationVM.ipswDownloadPath = VMCreationViewModel.defaultIPSWDownloadPath
+                    }
                 }
 
                 sourceButton(
@@ -37,16 +40,20 @@ struct IPSWSelectionStep: View {
             }
 
             if creationVM.ipswSource == .downloadLatest, let path = creationVM.ipswDownloadPath {
-                pathBadge(path: path)
+                pathBadge(path: path) {
+                    selectDownloadDestination()
+                }
             }
 
             if creationVM.ipswSource == .localFile, let path = creationVM.ipswPath {
-                pathBadge(path: path)
+                pathBadge(path: path) {
+                    selectIPSWFile()
+                }
             }
         }
     }
 
-    private func pathBadge(path: String) -> some View {
+    private func pathBadge(path: String, changeAction: @escaping () -> Void) -> some View {
         HStack {
             Image(systemName: "doc.fill")
                 .foregroundStyle(.secondary)
@@ -54,6 +61,12 @@ struct IPSWSelectionStep: View {
                 .font(.caption)
                 .lineLimit(1)
                 .truncationMode(.middle)
+
+            Button("Change…") {
+                changeAction()
+            }
+            .font(.caption)
+            .buttonStyle(.link)
         }
         .padding(8)
         .background(Color.secondary.opacity(0.1), in: RoundedRectangle(cornerRadius: 6))
@@ -102,14 +115,20 @@ struct IPSWSelectionStep: View {
     private func selectDownloadDestination() {
         let panel = NSSavePanel()
         panel.title = "Choose Download Location"
-        panel.directoryURL = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
-        panel.nameFieldStringValue = "RestoreImage.ipsw"
+
+        // Pre-fill from current path if available
+        if let currentPath = creationVM.ipswDownloadPath {
+            let currentURL = URL(fileURLWithPath: currentPath)
+            panel.directoryURL = currentURL.deletingLastPathComponent()
+            panel.nameFieldStringValue = currentURL.lastPathComponent
+        } else {
+            panel.directoryURL = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
+            panel.nameFieldStringValue = "RestoreImage.ipsw"
+        }
         panel.allowedContentTypes = [UTType(filenameExtension: "ipsw")!]
 
         if panel.runModal() == .OK, let url = panel.url {
-            creationVM.ipswSource = .downloadLatest
             creationVM.ipswDownloadPath = url.path
-            creationVM.ipswPath = nil
         }
     }
 
@@ -123,7 +142,6 @@ struct IPSWSelectionStep: View {
         if panel.runModal() == .OK, let url = panel.url {
             creationVM.ipswSource = .localFile
             creationVM.ipswPath = url.path
-            creationVM.ipswDownloadPath = nil
         }
     }
 
