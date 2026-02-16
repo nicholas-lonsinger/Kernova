@@ -26,11 +26,14 @@ final class VirtualizationService {
             if instance.hasSaveFile {
                 try await restoreOrColdBoot(instance)
             } else {
-                let vzConfig = try configBuilder.build(
+                let result = try configBuilder.build(
                     from: instance.configuration,
                     bundleURL: instance.bundleURL
                 )
-                let vm = instance.attachVirtualMachine(from: vzConfig)
+                instance.serialInputPipe = result.serialInputPipe
+                instance.serialOutputPipe = result.serialOutputPipe
+                let vm = instance.attachVirtualMachine(from: result.configuration)
+                instance.startSerialReading()
                 try await vm.start()
             }
 
@@ -172,12 +175,15 @@ final class VirtualizationService {
     /// Builds a `VZVirtualMachine`, restores from a save file, and resumes.
     /// On restore failure, deletes the stale save file and falls back to a cold boot.
     private func restoreOrColdBoot(_ instance: VMInstance) async throws {
-        let vzConfig = try configBuilder.build(
+        let result = try configBuilder.build(
             from: instance.configuration,
             bundleURL: instance.bundleURL
         )
 
-        let vm = instance.attachVirtualMachine(from: vzConfig)
+        instance.serialInputPipe = result.serialInputPipe
+        instance.serialOutputPipe = result.serialOutputPipe
+        let vm = instance.attachVirtualMachine(from: result.configuration)
+        instance.startSerialReading()
 
         do {
             instance.status = .restoring
@@ -191,7 +197,7 @@ final class VirtualizationService {
             instance.removeSaveFile()
 
             // Create a fresh VZVirtualMachine since the previous one may be in a bad state
-            let freshVM = instance.attachVirtualMachine(from: vzConfig)
+            let freshVM = instance.attachVirtualMachine(from: result.configuration)
             instance.status = .starting
             try await freshVM.start()
         }

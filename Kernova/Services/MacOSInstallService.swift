@@ -63,12 +63,15 @@ final class MacOSInstallService {
         try storageService.saveConfiguration(instance.configuration, to: instance.bundleURL)
 
         // 4. Build VZ configuration and create VM
-        let vzConfig = try configBuilder.build(
+        let result = try configBuilder.build(
             from: instance.configuration,
             bundleURL: instance.bundleURL
         )
 
-        let vm = instance.attachVirtualMachine(from: vzConfig)
+        instance.serialInputPipe = result.serialInputPipe
+        instance.serialOutputPipe = result.serialOutputPipe
+        let vm = instance.attachVirtualMachine(from: result.configuration)
+        instance.startSerialReading()
 
         // 5. Check for cancellation before starting the installer
         try Task.checkCancellation()

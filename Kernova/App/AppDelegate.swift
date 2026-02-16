@@ -3,11 +3,13 @@ import SwiftUI
 
 @main
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
 
     private var mainWindowController: MainWindowController?
     private var viewModel: VMLibraryViewModel!
     private var pendingOpenURLs: [URL] = []
+    private var serialConsoleWindows: [UUID: SerialConsoleWindowController] = [:]
+    private var serialConsoleObservers: [UUID: Any] = [:]
 
     // MARK: - Entry Point
 
@@ -119,6 +121,48 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         viewModel.confirmDelete(instance)
     }
 
+    // MARK: - Serial Console
+
+    @objc func showSerialConsole(_ sender: Any?) {
+        guard let instance = viewModel.selectedInstance else { return }
+
+        if let existing = serialConsoleWindows[instance.instanceID] {
+            existing.showWindow(nil)
+            existing.window?.makeKeyAndOrderFront(nil)
+            return
+        }
+
+        let controller = SerialConsoleWindowController(instance: instance)
+        let vmID = instance.instanceID
+        serialConsoleWindows[vmID] = controller
+
+        // Clean up when window closes
+        let token = NotificationCenter.default.addObserver(
+            forName: NSWindow.willCloseNotification,
+            object: controller.window,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                if let token = self?.serialConsoleObservers.removeValue(forKey: vmID) {
+                    NotificationCenter.default.removeObserver(token)
+                }
+                self?.serialConsoleWindows.removeValue(forKey: vmID)
+            }
+        }
+        serialConsoleObservers[vmID] = token
+
+        controller.showWindow(nil)
+    }
+
+    // MARK: - Menu Validation
+
+    func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+        if menuItem.action == #selector(showSerialConsole(_:)) {
+            return viewModel.selectedInstance != nil
+        }
+        return true
+    }
+
     // MARK: - Main Menu
 
     private func setupMainMenu() {
@@ -169,6 +213,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Window menu
         let windowMenuItem = NSMenuItem()
         let windowMenu = NSMenu(title: "Window")
+        let serialItem = NSMenuItem(
+            title: "Serial Console",
+            action: #selector(showSerialConsole(_:)),
+            keyEquivalent: "t"
+        )
+        serialItem.keyEquivalentModifierMask = [.command, .shift]
+        windowMenu.addItem(serialItem)
+        windowMenu.addItem(.separator())
         windowMenu.addItem(withTitle: "Minimize", action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m")
         windowMenu.addItem(withTitle: "Zoom", action: #selector(NSWindow.performZoom(_:)), keyEquivalent: "")
         windowMenu.addItem(.separator())

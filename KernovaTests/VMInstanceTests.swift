@@ -103,4 +103,43 @@ struct VMInstanceTests {
         #expect(instance.auxiliaryStorageURL.lastPathComponent == "AuxiliaryStorage")
         #expect(instance.saveFileURL.lastPathComponent == "SaveFile.vzvmsave")
     }
+
+    // MARK: - Serial Console
+
+    @Test("serialOutputText starts empty")
+    func serialOutputTextStartsEmpty() {
+        let instance = makeInstance()
+        #expect(instance.serialOutputText.isEmpty)
+    }
+
+    @Test("sendSerialInput writes to input pipe")
+    func sendSerialInputWritesToPipe() {
+        let instance = makeInstance()
+        let pipe = Pipe()
+        instance.serialInputPipe = pipe
+
+        instance.sendSerialInput("hello")
+
+        let data = pipe.fileHandleForReading.availableData
+        #expect(String(data: data, encoding: .utf8) == "hello")
+    }
+
+    @Test("resetToStopped clears serial pipes")
+    func resetToStoppedClearsSerialPipes() {
+        let instance = makeInstance(status: .running)
+        instance.serialInputPipe = Pipe()
+        instance.serialOutputPipe = Pipe()
+
+        instance.resetToStopped()
+
+        #expect(instance.serialInputPipe == nil)
+        #expect(instance.serialOutputPipe == nil)
+        #expect(instance.status == .stopped)
+    }
+
+    @Test("serialLogURL is forwarded from bundleLayout")
+    func serialLogURL() {
+        let instance = makeInstance()
+        #expect(instance.serialLogURL.lastPathComponent == "serial.log")
+    }
 }

@@ -51,6 +51,13 @@ struct VMBundleLayoutTests {
         #expect(layout.saveFileURL.deletingLastPathComponent() == bundleURL)
     }
 
+    @Test("serialLogURL appends serial.log to bundle path")
+    func serialLogURL() {
+        let layout = VMBundleLayout(bundleURL: bundleURL)
+        #expect(layout.serialLogURL.lastPathComponent == "serial.log")
+        #expect(layout.serialLogURL.deletingLastPathComponent() == bundleURL)
+    }
+
     // MARK: - hasSaveFile
 
     @Test("hasSaveFile returns false when no save file exists")
