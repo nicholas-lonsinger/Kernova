@@ -10,10 +10,17 @@ import os
 /// - **Linux Kernel**: `VZGenericPlatformConfiguration` + `VZLinuxBootLoader`
 struct ConfigurationBuilder: Sendable {
 
+    /// Contains the built VZ configuration along with bidirectional serial port pipes.
+    struct BuildResult: @unchecked Sendable {
+        let configuration: VZVirtualMachineConfiguration
+        let serialInputPipe: Pipe
+        let serialOutputPipe: Pipe
+    }
+
     private static let logger = Logger(subsystem: "com.kernova.app", category: "ConfigurationBuilder")
 
     /// Builds a validated `VZVirtualMachineConfiguration` from the given VM configuration and bundle URL.
-    func build(from config: VMConfiguration, bundleURL: URL) throws -> VZVirtualMachineConfiguration {
+    func build(from config: VMConfiguration, bundleURL: URL) throws -> BuildResult {
         let vzConfig = VZVirtualMachineConfiguration()
 
         // Resources
@@ -43,11 +50,14 @@ struct ConfigurationBuilder: Sendable {
         configureAudio(vzConfig)
         configureDirectorySharing(vzConfig, config: config)
 
+        // Serial port
+        let (inputPipe, outputPipe) = configureSerialPort(vzConfig)
+
         // Validate
         try vzConfig.validate()
 
         Self.logger.info("Built VZ configuration for '\(config.name)' (\(config.bootMode.displayName))")
-        return vzConfig
+        return BuildResult(configuration: vzConfig, serialInputPipe: inputPipe, serialOutputPipe: outputPipe)
     }
 
     // MARK: - macOS Boot
@@ -253,6 +263,24 @@ struct ConfigurationBuilder: Sendable {
 
         audioDevice.streams = [inputStream, outputStream]
         vzConfig.audioDevices = [audioDevice]
+    }
+
+    // MARK: - Serial Port
+
+    /// Configures a bidirectional virtio console serial port using pipe-backed file handles.
+    /// Returns the (input, output) pipes for the host side.
+    private func configureSerialPort(_ vzConfig: VZVirtualMachineConfiguration) -> (Pipe, Pipe) {
+        let inputPipe = Pipe()   // host writes → guest reads
+        let outputPipe = Pipe()  // guest writes → host reads
+
+        let serialPort = VZVirtioConsoleDeviceSerialPortConfiguration()
+        serialPort.attachment = VZFileHandleSerialPortAttachment(
+            fileHandleForReading: inputPipe.fileHandleForReading,
+            fileHandleForWriting: outputPipe.fileHandleForWriting
+        )
+        vzConfig.serialPorts = [serialPort]
+
+        return (inputPipe, outputPipe)
     }
 
     // MARK: - Directory Sharing

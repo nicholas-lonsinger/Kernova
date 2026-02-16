@@ -32,6 +32,10 @@ struct VMBundleLayout: Sendable {
         bundleURL.appendingPathComponent("SaveFile.vzvmsave")
     }
 
+    var serialLogURL: URL {
+        bundleURL.appendingPathComponent("serial.log")
+    }
+
     var hasSaveFile: Bool {
         FileManager.default.fileExists(atPath: saveFileURL.path)
     }
