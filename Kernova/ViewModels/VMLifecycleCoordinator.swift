@@ -9,12 +9,14 @@ import os
 ///
 /// **Operation serialization:** Each VM can have at most one in-flight lifecycle
 /// operation at a time. Concurrent requests for the same VM are rejected with
-/// ``VMLifecycleCoordinator/Error/operationInProgress``. Since the coordinator
-/// is `@MainActor`, a simple `Set<UUID>` is sufficient — no locks required.
+/// ``LifecycleError/operationInProgress``. A token-based `[UUID: UUID]` dictionary
+/// maps each VM to its current operation token. Since the coordinator is `@MainActor`,
+/// no locks are required.
 ///
-/// **Interruption-aware:** `stop` and `forceStop` bypass serialization so users
-/// can always interrupt a hung or in-progress operation. On success they also
-/// clear the active-operation flag for that VM.
+/// **Interruption-aware:** `stop` and `forceStop` bypass serialization entirely —
+/// they clear the active-operation token *before* calling the underlying service.
+/// This invalidates any in-flight operation's token so its `defer` cleanup won't
+/// clobber a subsequent operation's entry.
 @MainActor
 final class VMLifecycleCoordinator {
 
@@ -24,8 +26,9 @@ final class VMLifecycleCoordinator {
     let installService: any MacOSInstallProviding
     let ipswService: any IPSWProviding
 
-    /// Tracks VMs that currently have a lifecycle operation in flight.
-    private var activeOperations: Set<UUID> = []
+    /// Maps VM ID → operation token for VMs that currently have a lifecycle operation in flight.
+    /// The token allows `defer` blocks to avoid clobbering entries inserted by a later operation.
+    private var activeOperations: [UUID: UUID] = [:]
 
     init(
         virtualizationService: any VirtualizationProviding,
@@ -37,27 +40,48 @@ final class VMLifecycleCoordinator {
         self.ipswService = ipswService
     }
 
+    // MARK: - Errors
+
+    enum LifecycleError: LocalizedError {
+        case operationInProgress(vmName: String)
+
+        var errorDescription: String? {
+            switch self {
+            case .operationInProgress(let vmName):
+                "An operation is already in progress for '\(vmName)'. Please wait for it to complete."
+            }
+        }
+    }
+
     // MARK: - Operation Serialization
 
     /// Returns `true` if the given VM currently has a lifecycle operation in progress.
     func hasActiveOperation(for instanceID: UUID) -> Bool {
-        activeOperations.contains(instanceID)
+        activeOperations[instanceID] != nil
     }
 
     /// Executes `body` only if no other operation is already in flight for this VM.
-    /// Inserts the VM's ID before running and removes it on completion (success or failure).
+    ///
+    /// Generates a unique token per invocation. The `defer` block only removes the
+    /// entry if its token still matches, preventing a stale removal from clobbering
+    /// a token written by `stop`/`forceStop` or a subsequent operation.
     private func serialized<T>(
         _ instance: VMInstance,
         action: String,
         body: () async throws -> T
     ) async throws -> T {
-        guard !activeOperations.contains(instance.id) else {
+        guard activeOperations[instance.id] == nil else {
             Self.logger.warning("Rejected \(action) for '\(instance.name)': operation already in progress")
-            throw Error.operationInProgress(vmName: instance.name)
+            throw LifecycleError.operationInProgress(vmName: instance.name)
         }
 
-        activeOperations.insert(instance.id)
-        defer { activeOperations.remove(instance.id) }
+        let token = UUID()
+        activeOperations[instance.id] = token
+        defer {
+            if activeOperations[instance.id] == token {
+                activeOperations.removeValue(forKey: instance.id)
+            }
+        }
 
         Self.logger.debug("Acquired operation lock for '\(instance.name)' (action: \(action))")
         return try await body()
@@ -72,19 +96,21 @@ final class VMLifecycleCoordinator {
     }
 
     /// Requests a graceful stop. Bypasses serialization so users can always
-    /// interrupt an in-progress operation (e.g. a hung start). On success,
-    /// clears the active-operation flag for this VM.
+    /// interrupt an in-progress operation (e.g. a hung start). Clears the
+    /// active-operation token *before* calling the service, invalidating any
+    /// in-flight operation's defer guard.
     func stop(_ instance: VMInstance) throws {
+        activeOperations.removeValue(forKey: instance.id)
         try virtualizationService.stop(instance)
-        activeOperations.remove(instance.id)
     }
 
     /// Immediately terminates the VM. Bypasses serialization so users can
-    /// always force-kill, even during another in-flight operation. On success,
-    /// clears the active-operation flag for this VM.
+    /// always force-kill, even during another in-flight operation. Clears the
+    /// active-operation token *before* calling the service, invalidating any
+    /// in-flight operation's defer guard.
     func forceStop(_ instance: VMInstance) async throws {
+        activeOperations.removeValue(forKey: instance.id)
         try await virtualizationService.forceStop(instance)
-        activeOperations.remove(instance.id)
     }
 
     func pause(_ instance: VMInstance) async throws {
@@ -185,20 +211,4 @@ final class VMLifecycleCoordinator {
         }
     }
     #endif
-}
-
-// MARK: - VMLifecycleCoordinator.Error
-
-extension VMLifecycleCoordinator {
-
-    enum Error: LocalizedError {
-        case operationInProgress(vmName: String)
-
-        var errorDescription: String? {
-            switch self {
-            case .operationInProgress(let vmName):
-                "An operation is already in progress for '\(vmName)'. Please wait for it to complete."
-            }
-        }
-    }
 }

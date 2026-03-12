@@ -47,6 +47,7 @@ final class SuspendingMockVirtualizationService: VirtualizationProviding {
     }
 
     private func suspendIfNeeded() async {
+        precondition(suspendedContinuation == nil, "Only one operation can be suspended at a time")
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
             suspendedContinuation = continuation
 

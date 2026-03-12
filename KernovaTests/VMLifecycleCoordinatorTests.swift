@@ -178,7 +178,7 @@ struct VMLifecycleCoordinatorTests {
         await suspendingService.waitUntilSuspended()
 
         // A second operation on the same VM should be rejected
-        await #expect(throws: VMLifecycleCoordinator.Error.self) {
+        await #expect(throws: VMLifecycleCoordinator.LifecycleError.self) {
             try await coordinator.pause(instance)
         }
 
@@ -304,8 +304,8 @@ struct VMLifecycleCoordinatorTests {
         _ = try? await task.value
     }
 
-    @Test("synchronous stop lock is released after completion")
-    func stopLockReleasedAfterCompletion() throws {
+    @Test("stop does not affect active operation tracking")
+    func stopDoesNotAffectActiveOperationTracking() throws {
         let (coordinator, virtService, _, _) = makeCoordinator()
         let instance = makeInstance()
         instance.status = .running
@@ -315,8 +315,8 @@ struct VMLifecycleCoordinatorTests {
         #expect(virtService.stopCallCount == 1)
     }
 
-    @Test("synchronous stop lock is released after error")
-    func stopLockReleasedAfterError() async throws {
+    @Test("stop error does not affect active operation tracking")
+    func stopErrorDoesNotAffectActiveOperationTracking() async throws {
         let (coordinator, virtService, _, _) = makeCoordinator()
         virtService.stopError = VirtualizationError.noVirtualMachine
         let instance = makeInstance()
@@ -330,6 +330,40 @@ struct VMLifecycleCoordinatorTests {
         // Should be able to start after failed stop
         try await coordinator.start(instance)
         #expect(virtService.startCallCount == 1)
+    }
+
+    @Test("token prevents stale defer from clobbering after stop clears entry")
+    func tokenPreventsStaleRemoval() async throws {
+        let suspendingService = SuspendingMockVirtualizationService()
+        let coordinator = VMLifecycleCoordinator(
+            virtualizationService: suspendingService,
+            installService: MockMacOSInstallService(),
+            ipswService: MockIPSWService()
+        )
+        let instance = makeInstance()
+
+        // Start an operation that will suspend (acquires token A)
+        let task = Task { @MainActor in
+            try await coordinator.start(instance)
+        }
+
+        await suspendingService.waitUntilSuspended()
+        #expect(coordinator.hasActiveOperation(for: instance.id))
+
+        // Stop clears the active operation entry (invalidating token A)
+        try coordinator.stop(instance)
+        #expect(!coordinator.hasActiveOperation(for: instance.id))
+
+        // Resume the suspended start — its defer should NOT re-clear the entry
+        // because its token no longer matches
+        suspendingService.resumeSuspended()
+        _ = try? await task.value
+
+        // Now start a new operation — this should succeed because
+        // the stale defer didn't clobber anything
+        suspendingService.shouldSuspendOnStart = false
+        try await coordinator.start(instance)
+        #expect(!coordinator.hasActiveOperation(for: instance.id))
     }
 
     // MARK: - macOS Installation
