@@ -1,0 +1,10 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "type": "command",
+        "command": "echo '📋 Review LEARNINGS.md for accumulated project knowledge before starting work. Update it with new discoveries when you encounter non-obvious issues.' && echo '' && tail -50 LEARNINGS.md"
+      }
+    ]
+  }
+}

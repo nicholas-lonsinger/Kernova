@@ -115,6 +115,28 @@ feat: Add VM snapshot support
 
 The `Co-Authored-By` trailer is automatically appended by Claude Code and should not be duplicated in the commit message body.
 
+## Self-Improvement Loop
+
+This project maintains a **[LEARNINGS.md](LEARNINGS.md)** file — an append-only knowledge base of non-obvious discoveries, resolved pitfalls, and codebase-specific patterns accumulated across development sessions.
+
+### How it works
+1. **At session start:** The `.claude/settings.json` SessionStart hook surfaces recent learnings. Read the full file if working on an area covered by existing entries.
+2. **During work:** When you encounter a non-obvious issue (e.g., a build failure with a misleading error, a concurrency gotcha, a testing pattern that doesn't work as expected), note it mentally.
+3. **After resolving:** Append a concise, actionable entry to the appropriate category in LEARNINGS.md. Entries should be specific to this codebase — not general programming advice.
+4. **Keep it lean:** Each entry should be 1-2 sentences. Remove entries that become obsolete (e.g., if the underlying code changes). The file should stay under ~100 entries.
+
+### What to capture
+- Build/environment gotchas with non-obvious root causes
+- Concurrency and actor isolation pitfalls specific to the VZ integration
+- Testing patterns that work (or don't) with the mock/protocol setup
+- Architecture constraints that aren't obvious from reading the code
+- Common mistakes when modifying specific components
+
+### What NOT to capture
+- General Swift/SwiftUI knowledge
+- Information already documented in CLAUDE.md or ARCHITECTURE.md
+- Obvious patterns that any experienced developer would know
+
 ## Architecture Change Protocol
 
 After completing any task that hits one or more of the following triggers, suggest follow-up updates before considering the task complete.
