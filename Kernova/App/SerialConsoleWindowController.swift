@@ -63,7 +63,7 @@ final class SerialConsoleWindowController: NSWindowController, NSWindowDelegate 
 
     override func showWindow(_ sender: Any?) {
         super.showWindow(sender)
-        observeStatus()
+        if !observingStatus { observeStatus() }
         Self.logger.debug("Serial console window shown for VM '\(self.instance.name)'")
     }
 
