@@ -13,6 +13,7 @@ concurrency:
 jobs:
   build-and-test:
     runs-on: macos-26
+    timeout-minutes: 45
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -31,10 +32,10 @@ jobs:
           fi
           xcodebuild -version
 
-      - name: Build
+      - name: Build for testing
         run: |
           set -o pipefail
-          xcodebuild build \
+          xcodebuild build-for-testing \
             -project Kernova.xcodeproj \
             -scheme Kernova \
             -destination 'platform=macOS' \
@@ -43,10 +44,10 @@ jobs:
             CODE_SIGNING_ALLOWED=YES \
             2>&1 | if command -v xcbeautify &>/dev/null; then xcbeautify --renderer github-actions; else cat; fi
 
-      - name: Test
+      - name: Test without building
         run: |
           set -o pipefail
-          xcodebuild test \
+          xcodebuild test-without-building \
             -project Kernova.xcodeproj \
             -scheme Kernova \
             -destination 'platform=macOS' \
