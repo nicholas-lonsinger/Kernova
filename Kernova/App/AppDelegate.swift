@@ -12,7 +12,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
     private var serialConsoleObservers: [UUID: Any] = [:]
     private var fullscreenWindows: [UUID: FullscreenWindowController] = [:]
     private var fullscreenObservers: [UUID: Any] = [:]
-    private var serialConsoleMenuItem: NSMenuItem?
+    private var serialConsoleMenuItem: NSMenuItem!
 
     // MARK: - Entry Point
 
@@ -244,6 +244,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
             return instance.status.canEditSettings && !viewModel.isCloning
         case #selector(deleteVM(_:)):
             return viewModel.selectedInstance?.status.canEditSettings ?? false
+        // AppKit bypasses NSMenuItemValidation for windowsMenu items, so
+        // menuNeedsUpdate(_:) handles visual state. This case covers keyboard
+        // shortcut validation, which still routes through validateMenuItem(_:).
         case #selector(showSerialConsole(_:)):
             return viewModel.selectedInstance?.canShowSerialConsole ?? false
         case #selector(toggleFullscreenDisplay(_:)):
@@ -264,7 +267,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
 
     func menuNeedsUpdate(_ menu: NSMenu) {
         if menu === NSApp.windowsMenu {
-            serialConsoleMenuItem?.isEnabled = viewModel.selectedInstance?.canShowSerialConsole ?? false
+            serialConsoleMenuItem.isEnabled = viewModel.selectedInstance?.canShowSerialConsole ?? false
         }
     }
 
