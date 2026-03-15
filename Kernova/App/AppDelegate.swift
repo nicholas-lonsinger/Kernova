@@ -1,4 +1,5 @@
 import Cocoa
+import os
 import SwiftUI
 
 @main
@@ -13,6 +14,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
     private var fullscreenWindows: [UUID: FullscreenWindowController] = [:]
     private var fullscreenObservers: [UUID: Any] = [:]
     private var serialConsoleMenuItem: NSMenuItem!
+
+    private static let logger = Logger(subsystem: "com.kernova.app", category: "AppDelegate")
 
     // MARK: - Entry Point
 
@@ -41,7 +44,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
-        true
+        let hasActiveVMs = viewModel.instances.contains { instance in
+            if instance.status.isActive { return true }
+            // Live-paused VMs (not cold-paused to disk) should keep the app alive
+            if instance.status == .paused && instance.virtualMachine != nil { return true }
+            return false
+        }
+
+        // Stay alive if VMs are active or fullscreen windows still exist
+        if hasActiveVMs || !fullscreenWindows.isEmpty {
+            Self.logger.debug("applicationShouldTerminateAfterLastWindowClosed: false (activeVMs=\(hasActiveVMs), fullscreenWindows=\(self.fullscreenWindows.count))")
+            return false
+        }
+
+        Self.logger.debug("applicationShouldTerminateAfterLastWindowClosed: true")
+        return true
+    }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if !flag {
+            showLibrary(nil)
+        }
+        return true
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
@@ -90,6 +114,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
 
     @objc func newVM(_ sender: Any?) {
         viewModel.showCreationWizard = true
+    }
+
+    @objc func showLibrary(_ sender: Any?) {
+        if let existingWindow = mainWindowController?.window {
+            Self.logger.debug("showLibrary: focusing existing window")
+            existingWindow.makeKeyAndOrderFront(nil)
+        } else {
+            Self.logger.notice("showLibrary: recreating main window controller")
+            let windowController = MainWindowController(viewModel: viewModel)
+            windowController.showWindow(nil)
+            mainWindowController = windowController
+        }
     }
 
     // MARK: - VM Actions
@@ -216,6 +252,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
                     instance.configuration.prefersFullscreen = false
                     self.viewModel.saveConfiguration(for: instance)
                 }
+
+                // Ensure the main window is visible after fullscreen closes
+                self.showLibrary(nil)
             }
         }
         fullscreenObservers[vmID] = token
@@ -348,6 +387,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
         // Window menu
         let windowMenuItem = NSMenuItem()
         let windowMenu = NSMenu(title: "Window")
+        let showLibraryItem = NSMenuItem(
+            title: "Show Library",
+            action: #selector(showLibrary(_:)),
+            keyEquivalent: "0"
+        )
+        windowMenu.addItem(showLibraryItem)
+        windowMenu.addItem(.separator())
         let serialItem = NSMenuItem(
             title: "Serial Console",
             action: #selector(showSerialConsole(_:)),
