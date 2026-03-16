@@ -271,7 +271,13 @@ struct ConfigurationBuilder: Sendable {
                 throw ConfigurationBuilderError.isoImagePathIsDirectory(isoPath)
             }
 
-            let isoAttachment = try VZDiskImageStorageDeviceAttachment(url: isoURL, readOnly: true)
+            let isoAttachment: VZDiskImageStorageDeviceAttachment
+            do {
+                isoAttachment = try VZDiskImageStorageDeviceAttachment(url: isoURL, readOnly: true)
+            } catch {
+                Self.logger.error("Failed to attach ISO at '\(isoPath)' (resolved: '\(resolvedISOPath)'): \(error.localizedDescription)")
+                throw error
+            }
             let usbStorage = VZUSBMassStorageDeviceConfiguration(attachment: isoAttachment)
             // For EFI boot with boot-from-disc enabled, insert before main disk
             // so the firmware discovers the ISO first
