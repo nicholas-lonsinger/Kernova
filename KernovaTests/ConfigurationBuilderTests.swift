@@ -35,8 +35,12 @@ struct ConfigurationBuilderTests {
         defer { try? FileManager.default.removeItem(at: bundleURL) }
 
         let builder = ConfigurationBuilder()
-        #expect(throws: ConfigurationBuilderError.self) {
+        #expect {
             try builder.build(from: makeLinuxConfig(), bundleURL: bundleURL)
+        } throws: { error in
+            guard let e = error as? ConfigurationBuilderError,
+                  case .diskImageNotFound = e else { return false }
+            return true
         }
     }
 
@@ -47,8 +51,12 @@ struct ConfigurationBuilderTests {
 
         let config = VMConfiguration(name: "Test Linux", guestOS: .linux, bootMode: .linuxKernel)
         let builder = ConfigurationBuilder()
-        #expect(throws: ConfigurationBuilderError.self) {
+        #expect {
             try builder.build(from: config, bundleURL: bundleURL)
+        } throws: { error in
+            guard let e = error as? ConfigurationBuilderError,
+                  case .missingKernelPath = e else { return false }
+            return true
         }
     }
 
@@ -78,8 +86,12 @@ struct ConfigurationBuilderTests {
         ])
 
         let builder = ConfigurationBuilder()
-        #expect(throws: ConfigurationBuilderError.self) {
+        #expect {
             try builder.build(from: config, bundleURL: bundleURL)
+        } throws: { error in
+            guard let e = error as? ConfigurationBuilderError,
+                  case .sharedDirectoryNotFound = e else { return false }
+            return true
         }
     }
 
@@ -97,8 +109,12 @@ struct ConfigurationBuilderTests {
         ])
 
         let builder = ConfigurationBuilder()
-        #expect(throws: ConfigurationBuilderError.self) {
+        #expect {
             try builder.build(from: config, bundleURL: bundleURL)
+        } throws: { error in
+            guard let e = error as? ConfigurationBuilderError,
+                  case .sharedDirectoryNotADirectory = e else { return false }
+            return true
         }
     }
 
@@ -118,8 +134,12 @@ struct ConfigurationBuilderTests {
         ])
 
         let builder = ConfigurationBuilder()
-        #expect(throws: ConfigurationBuilderError.self) {
+        #expect {
             try builder.build(from: config, bundleURL: bundleURL)
+        } throws: { error in
+            guard let e = error as? ConfigurationBuilderError,
+                  case .sharedDirectoryNotWritable = e else { return false }
+            return true
         }
     }
 
@@ -189,19 +209,23 @@ struct ConfigurationBuilderTests {
 
         let builder = ConfigurationBuilder()
         // Build may fail for other reasons (e.g., VZ framework validation), but must NOT fail
-        // with a shared directory error — symlink should be resolved and accepted.
+        // with a path validation error — symlink should be resolved and accepted.
         do {
             _ = try builder.build(from: config, bundleURL: bundleURL)
         } catch let error as ConfigurationBuilderError {
             switch error {
+            // Path validation errors — these MUST NOT occur:
             case .sharedDirectoryNotFound, .sharedDirectoryNotADirectory,
                  .sharedDirectoryNotReadable, .sharedDirectoryNotWritable,
                  .kernelNotFound, .kernelPathIsDirectory,
                  .initrdNotFound, .initrdPathIsDirectory,
                  .isoImageNotFound, .isoImagePathIsDirectory:
                 Issue.record("Unexpected path validation error: \(error)")
-            default:
-                break  // Other ConfigurationBuilder errors (e.g., VZ framework validation) are expected
+            // Expected failures in test environment (no real VZ hardware):
+            case .macOSGuestRequiresAppleSilicon,
+                 .invalidHardwareModel, .invalidMachineIdentifier,
+                 .missingKernelPath, .diskImageNotFound:
+                break
             }
         } catch {
             // VZ framework or other errors are expected
@@ -293,14 +317,18 @@ struct ConfigurationBuilderTests {
             _ = try builder.build(from: config, bundleURL: bundleURL)
         } catch let error as ConfigurationBuilderError {
             switch error {
+            // Path validation errors — these MUST NOT occur:
             case .sharedDirectoryNotFound, .sharedDirectoryNotADirectory,
                  .sharedDirectoryNotReadable, .sharedDirectoryNotWritable,
                  .kernelNotFound, .kernelPathIsDirectory,
                  .initrdNotFound, .initrdPathIsDirectory,
                  .isoImageNotFound, .isoImagePathIsDirectory:
                 Issue.record("Unexpected path validation error: \(error)")
-            default:
-                break  // Other ConfigurationBuilder errors (e.g., VZ framework validation) are expected
+            // Expected failures in test environment (no real VZ hardware):
+            case .macOSGuestRequiresAppleSilicon,
+                 .invalidHardwareModel, .invalidMachineIdentifier,
+                 .missingKernelPath, .diskImageNotFound:
+                break
             }
         } catch {
             // VZ framework or other errors are expected — the test only
@@ -440,6 +468,82 @@ struct ConfigurationBuilderTests {
 
         var config = VMConfiguration(name: "Test Linux", guestOS: .linux, bootMode: .efi)
         config.isoPath = dirPath.path(percentEncoded: false)
+
+        let builder = ConfigurationBuilder()
+        #expect {
+            try builder.build(from: config, bundleURL: bundleURL)
+        } throws: { error in
+            guard let e = error as? ConfigurationBuilderError,
+                  case .isoImagePathIsDirectory = e else { return false }
+            return true
+        }
+    }
+
+    // MARK: - Symlink-to-Directory Tests (Kernel / Initrd / ISO)
+
+    @Test("Builder throws for symlink to directory as kernel path")
+    func builderThrowsForSymlinkToDirectoryAsKernelPath() throws {
+        let bundleURL = try makeTempBundle(withDisk: true)
+        defer { try? FileManager.default.removeItem(at: bundleURL) }
+
+        let dirPath = bundleURL.appendingPathComponent("kernel-dir")
+        try FileManager.default.createDirectory(at: dirPath, withIntermediateDirectories: true)
+        let symlinkPath = bundleURL.appendingPathComponent("link-to-kernel-dir").path(percentEncoded: false)
+        try FileManager.default.createSymbolicLink(atPath: symlinkPath, withDestinationPath: dirPath.path(percentEncoded: false))
+
+        var config = VMConfiguration(name: "Test Linux", guestOS: .linux, bootMode: .linuxKernel)
+        config.kernelPath = symlinkPath
+
+        let builder = ConfigurationBuilder()
+        #expect {
+            try builder.build(from: config, bundleURL: bundleURL)
+        } throws: { error in
+            guard let e = error as? ConfigurationBuilderError,
+                  case .kernelPathIsDirectory = e else { return false }
+            return true
+        }
+    }
+
+    @Test("Builder throws for symlink to directory as initrd path")
+    func builderThrowsForSymlinkToDirectoryAsInitrdPath() throws {
+        let bundleURL = try makeTempBundle(withDisk: true)
+        defer { try? FileManager.default.removeItem(at: bundleURL) }
+
+        // Create a real kernel file so we get past that check
+        let kernelPath = bundleURL.appendingPathComponent("vmlinuz").path(percentEncoded: false)
+        FileManager.default.createFile(atPath: kernelPath, contents: Data([0]))
+
+        let dirPath = bundleURL.appendingPathComponent("initrd-dir")
+        try FileManager.default.createDirectory(at: dirPath, withIntermediateDirectories: true)
+        let symlinkPath = bundleURL.appendingPathComponent("link-to-initrd-dir").path(percentEncoded: false)
+        try FileManager.default.createSymbolicLink(atPath: symlinkPath, withDestinationPath: dirPath.path(percentEncoded: false))
+
+        var config = VMConfiguration(name: "Test Linux", guestOS: .linux, bootMode: .linuxKernel)
+        config.kernelPath = kernelPath
+        config.initrdPath = symlinkPath
+
+        let builder = ConfigurationBuilder()
+        #expect {
+            try builder.build(from: config, bundleURL: bundleURL)
+        } throws: { error in
+            guard let e = error as? ConfigurationBuilderError,
+                  case .initrdPathIsDirectory = e else { return false }
+            return true
+        }
+    }
+
+    @Test("Builder throws for symlink to directory as ISO path")
+    func builderThrowsForSymlinkToDirectoryAsISOPath() throws {
+        let bundleURL = try makeTempBundle(withDisk: true)
+        defer { try? FileManager.default.removeItem(at: bundleURL) }
+
+        let dirPath = bundleURL.appendingPathComponent("iso-dir")
+        try FileManager.default.createDirectory(at: dirPath, withIntermediateDirectories: true)
+        let symlinkPath = bundleURL.appendingPathComponent("link-to-iso-dir").path(percentEncoded: false)
+        try FileManager.default.createSymbolicLink(atPath: symlinkPath, withDestinationPath: dirPath.path(percentEncoded: false))
+
+        var config = VMConfiguration(name: "Test Linux", guestOS: .linux, bootMode: .efi)
+        config.isoPath = symlinkPath
 
         let builder = ConfigurationBuilder()
         #expect {

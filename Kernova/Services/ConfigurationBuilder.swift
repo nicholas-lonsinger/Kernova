@@ -176,6 +176,7 @@ struct ConfigurationBuilder: Sendable {
         vzConfig.platform = platform
 
         guard let kernelPath = config.kernelPath else {
+            Self.logger.error("Kernel path is required but not set for VM '\(config.name)'")
             throw ConfigurationBuilderError.missingKernelPath
         }
 
@@ -243,6 +244,7 @@ struct ConfigurationBuilder: Sendable {
     ) throws {
         let layout = VMBundleLayout(bundleURL: bundleURL)
         guard FileManager.default.fileExists(atPath: layout.diskImageURL.path(percentEncoded: false)) else {
+            Self.logger.error("Disk image not found at '\(layout.diskImageURL.path(percentEncoded: false))'")
             throw ConfigurationBuilderError.diskImageNotFound(layout.diskImageURL)
         }
 
