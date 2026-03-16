@@ -136,16 +136,18 @@ final class VMInstance: Identifiable {
         if !FileManager.default.fileExists(atPath: logURL.path(percentEncoded: false)) {
             FileManager.default.createFile(atPath: logURL.path(percentEncoded: false), contents: nil)
         }
-        let logHandle = try? FileHandle(forWritingTo: logURL)
         do {
-            _ = try logHandle?.seekToEnd()
+            let handle = try FileHandle(forWritingTo: logURL)
+            do { _ = try handle.seekToEnd() } catch {
+                Self.logger.warning("Could not seek to end of serial log: \(error.localizedDescription)")
+            }
+            serialLogFileHandle = handle
         } catch {
-            Self.logger.warning("Could not seek to end of serial log: \(error.localizedDescription)")
+            Self.logger.warning("Could not open serial log for writing: \(error.localizedDescription)")
         }
-        serialLogFileHandle = logHandle
 
         // Capture for the readability handler closure (runs on a background GCD queue)
-        let logFileHandle = logHandle
+        let logFileHandle = serialLogFileHandle
         let logger = Self.logger
 
         outputPipe.fileHandleForReading.readabilityHandler = { [weak self] handle in
