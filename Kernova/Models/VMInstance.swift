@@ -133,11 +133,11 @@ final class VMInstance: Identifiable {
 
         // Open (or create) the log file for appending
         let logURL = serialLogURL
-        if !FileManager.default.fileExists(atPath: logURL.path) {
-            FileManager.default.createFile(atPath: logURL.path, contents: nil)
+        if !FileManager.default.fileExists(atPath: logURL.path(percentEncoded: false)) {
+            FileManager.default.createFile(atPath: logURL.path(percentEncoded: false), contents: nil)
         }
         let logHandle = try? FileHandle(forWritingTo: logURL)
-        logHandle?.seekToEndOfFile()
+        _ = try? logHandle?.seekToEnd()
         serialLogFileHandle = logHandle
 
         // Capture for the readability handler closure (runs on a background GCD queue)
@@ -148,7 +148,7 @@ final class VMInstance: Identifiable {
             guard !data.isEmpty else { return }
 
             // Write to disk log (background-safe — FileHandle is thread-safe for sequential writes)
-            logFileHandle?.write(data)
+            try? logFileHandle?.write(contentsOf: data)
 
             // Update UI buffer on the main actor
             if let text = String(data: data, encoding: .utf8) {
@@ -176,13 +176,13 @@ final class VMInstance: Identifiable {
     func sendSerialInput(_ string: String) {
         guard let data = string.data(using: .utf8),
               let inputPipe = serialInputPipe else { return }
-        inputPipe.fileHandleForWriting.write(data)
+        try? inputPipe.fileHandleForWriting.write(contentsOf: data)
     }
 
     /// Stops reading from the serial output pipe and closes the log file handle.
     func stopSerialReading() {
         serialOutputPipe?.fileHandleForReading.readabilityHandler = nil
-        serialLogFileHandle?.closeFile()
+        try? serialLogFileHandle?.close()
         serialLogFileHandle = nil
     }
 }
