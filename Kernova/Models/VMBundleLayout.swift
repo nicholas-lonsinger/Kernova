@@ -41,11 +41,14 @@ struct VMBundleLayout: Sendable {
     }
 
     /// Actual bytes consumed on disk by the sparse disk image, or `nil` if the file doesn't exist.
+    ///
+    /// Uses `totalFileAllocatedSizeKey` (`st_blocks * 512`) rather than logical file size,
+    /// so sparse ASIF images report their true on-disk footprint instead of the virtual capacity.
     var diskUsageBytes: UInt64? {
-        guard let attrs = try? FileManager.default.attributesOfItem(atPath: diskImageURL.path),
-              let size = attrs[.size] as? UInt64 else {
+        guard let size = (try? diskImageURL.resourceValues(forKeys: [.totalFileAllocatedSizeKey]))?
+            .totalFileAllocatedSize else {
             return nil
         }
-        return size
+        return UInt64(size)
     }
 }

@@ -91,7 +91,7 @@ struct VMBundleLayoutTests {
         #expect(layout.diskUsageBytes == nil)
     }
 
-    @Test("diskUsageBytes returns correct size for an existing file")
+    @Test("diskUsageBytes returns non-nil for an existing file")
     func diskUsageBytesReturnsSize() throws {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
@@ -103,6 +103,31 @@ struct VMBundleLayoutTests {
         try testData.write(to: layout.diskImageURL)
 
         let usage = layout.diskUsageBytes
-        #expect(usage == 4096)
+        #expect(usage != nil)
+        // totalFileAllocatedSizeKey returns block-aligned allocation, so >= data size
+        #expect(usage! >= 4096)
+    }
+
+    @Test("diskUsageBytes returns physical allocation less than logical size for sparse files")
+    func diskUsageBytesReturnsSparseSize() throws {
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let layout = VMBundleLayout(bundleURL: tempDir)
+        let path = layout.diskImageURL.path
+
+        // Create a sparse file via ftruncate: 10 MB logical size, 0 bytes physically allocated
+        let logicalSize: UInt64 = 10 * 1024 * 1024
+        FileManager.default.createFile(atPath: path, contents: nil)
+        let fd = open(path, O_WRONLY)
+        ftruncate(fd, off_t(logicalSize))
+        close(fd)
+
+        let usage = layout.diskUsageBytes
+        #expect(usage != nil)
+        // Physical allocation should be much less than the 10 MB logical size
+        #expect(usage! < logicalSize)
     }
 }
