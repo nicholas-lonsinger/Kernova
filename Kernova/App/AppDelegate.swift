@@ -67,19 +67,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        // Cancel all preparing operations before terminating
-        for instance in viewModel.instances where instance.isPreparing {
+        // Cancel all preparing operations and remove phantom rows before terminating
+        viewModel.instances.removeAll { instance in
+            guard instance.isPreparing else { return false }
+
             Self.logger.notice("Terminating: cancelling preparing operation for '\(instance.name)'")
             instance.preparingState?.task.cancel()
-            instance.preparingState = nil
             // Best effort — in-flight copy may still be writing (FileManager.copyItem is not interruptible)
             do {
                 try FileManager.default.trashItem(at: instance.bundleURL, resultingItemURL: nil)
             } catch {
                 Self.logger.warning("Failed to clean up partial bundle for '\(instance.name)' during termination: \(error.localizedDescription)")
             }
+            return true
         }
-        viewModel.instances.removeAll { $0.isPreparing }
 
         // Save VMs that have a live virtual machine; cold-paused VMs already have state on disk
         let runningInstances = viewModel.instances.filter {

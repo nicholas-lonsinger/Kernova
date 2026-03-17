@@ -346,12 +346,7 @@ final class VMLibraryViewModel {
                     Self.logger.notice("Imported VM '\(config.name)' from \(sourceURL.lastPathComponent)")
                 } catch {
                     guard let self else { return }
-                    self.instances.removeAll { $0.id == phantom.id }
-                    if self.selectedID == phantom.id {
-                        self.selectedID = self.instances.first?.id
-                    }
-                    phantom.preparingState = nil
-                    Self.trashPartialBundle(at: destinationURL)
+                    self.cleanupPhantomInstance(phantom)
                     if !Task.isCancelled {
                         self.presentError(error)
                     }
@@ -468,12 +463,7 @@ final class VMLibraryViewModel {
                 Self.logger.notice("Cloned VM '\(instance.name)' as '\(config.name)'")
             } catch {
                 guard let self else { return }
-                self.instances.removeAll { $0.id == phantom.id }
-                if self.selectedID == phantom.id {
-                    self.selectedID = self.instances.first?.id
-                }
-                phantom.preparingState = nil
-                Self.trashPartialBundle(at: phantom.bundleURL)
+                self.cleanupPhantomInstance(phantom)
                 if !Task.isCancelled {
                     self.presentError(error)
                 }
@@ -629,19 +619,22 @@ final class VMLibraryViewModel {
         let operationLabel = instance.preparingState?.operation.displayLabel ?? "preparing"
 
         instance.preparingState?.task.cancel()
-        instance.preparingState = nil
-
-        let bundleURL = instance.bundleURL
-        instances.removeAll { $0.id == instance.id }
-        if selectedID == instance.id {
-            selectedID = instances.first?.id
-        }
+        cleanupPhantomInstance(instance)
 
         preparingInstanceToCancel = nil
         showCancelPreparingConfirmation = false
 
-        Self.trashPartialBundle(at: bundleURL)
         Self.logger.notice("Cancelled \(operationLabel) for '\(instance.name)'")
+    }
+
+    /// Removes a phantom instance from the library, clears its preparing state, and trashes its partial bundle.
+    private func cleanupPhantomInstance(_ phantom: VMInstance) {
+        instances.removeAll { $0.id == phantom.id }
+        if selectedID == phantom.id {
+            selectedID = instances.first?.id
+        }
+        phantom.preparingState = nil
+        Self.trashPartialBundle(at: phantom.bundleURL)
     }
 
     // MARK: - Error Handling
