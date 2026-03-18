@@ -384,7 +384,7 @@ final class VMLibraryViewModel {
                     }.value
 
                     // Clear preparing state regardless of whether the view model is still alive —
-                    // the phantom UI should always reflect completion.
+                    // the phantom row's UI should always reflect completion.
                     phantom.preparingState = nil
                     guard self != nil else {
                         Self.logger.warning("Import completed but view model was deallocated — VM '\(config.name)' exists on disk but was not added to library")
@@ -393,6 +393,7 @@ final class VMLibraryViewModel {
                     Self.logger.notice("Imported VM '\(config.name)' from \(sourceURL.lastPathComponent)")
                 } catch {
                     guard let self else {
+                        // Clear preparing state and trash partial bundle even without the view model.
                         phantom.preparingState = nil
                         Self.trashPartialBundle(at: phantom.bundleURL)
                         Self.logger.error("Import failed and view model was deallocated — trashed partial bundle '\(config.name)': \(error.localizedDescription)")
@@ -511,7 +512,7 @@ final class VMLibraryViewModel {
                 }.value
 
                 // Clear preparing state regardless of whether the view model is still alive —
-                // the phantom UI should always reflect completion.
+                // the phantom row's UI should always reflect completion.
                 phantom.preparingState = nil
                 guard self != nil else {
                     Self.logger.warning("Clone completed but view model was deallocated — VM '\(config.name)' exists on disk but was not added to library")
@@ -520,6 +521,7 @@ final class VMLibraryViewModel {
                 Self.logger.notice("Cloned VM '\(instance.name)' as '\(config.name)'")
             } catch {
                 guard let self else {
+                    // Clear preparing state and trash partial bundle even without the view model.
                     phantom.preparingState = nil
                     Self.trashPartialBundle(at: phantom.bundleURL)
                     Self.logger.error("Clone failed and view model was deallocated — trashed partial bundle '\(config.name)': \(error.localizedDescription)")
