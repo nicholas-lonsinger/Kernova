@@ -43,6 +43,26 @@ struct VMLibraryViewModelTests {
         #expect(viewModel.showError == false)
     }
 
+    // MARK: - Load
+
+    @Test("loadVMs auto-selects the first VM")
+    func loadVMsAutoSelectsFirst() {
+        let storage = MockVMStorageService()
+        let config1 = VMConfiguration(name: "First VM", guestOS: .linux, bootMode: .efi)
+        let config2 = VMConfiguration(name: "Second VM", guestOS: .linux, bootMode: .efi)
+        let url1 = FileManager.default.temporaryDirectory
+            .appendingPathComponent("\(config1.id.uuidString).kernova", isDirectory: true)
+        let url2 = FileManager.default.temporaryDirectory
+            .appendingPathComponent("\(config2.id.uuidString).kernova", isDirectory: true)
+        storage.bundles[url1] = config1
+        storage.bundles[url2] = config2
+
+        let (viewModel, _, _, _) = makeViewModel(storageService: storage)
+
+        #expect(viewModel.instances.count == 2)
+        #expect(viewModel.selectedID == viewModel.instances.first?.id)
+    }
+
     // MARK: - Delete
 
     @Test("confirmDelete sets instance and shows confirmation")

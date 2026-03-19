@@ -20,6 +20,13 @@ struct SidebarView: View {
                         }
                     )
                     .tag(instance.id)
+                    .simultaneousGesture(TapGesture(count: 2).onEnded {
+                        if instance.status.canStart {
+                            NSApp.sendAction(#selector(AppDelegate.startVM(_:)), to: nil, from: nil)
+                        } else if instance.status.canResume {
+                            NSApp.sendAction(#selector(AppDelegate.resumeVM(_:)), to: nil, from: nil)
+                        }
+                    })
                     .contextMenu {
                         contextMenu(for: instance)
                     }
