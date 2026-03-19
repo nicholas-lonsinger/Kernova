@@ -29,6 +29,18 @@ struct VMPauseOverlay: View {
                     .shadow(radius: 4)
             }
         }
-        .allowsHitTesting(true)
+    }
+}
+
+extension View {
+    /// Adds a pause overlay with animated opacity transition when `isPaused` is true.
+    func vmPauseOverlay(isPaused: Bool, onResume: @escaping () -> Void) -> some View {
+        self.overlay {
+            if isPaused {
+                VMPauseOverlay(onResume: onResume)
+                    .transition(.opacity)
+            }
+        }
+        .animation(.easeInOut(duration: 0.25), value: isPaused)
     }
 }

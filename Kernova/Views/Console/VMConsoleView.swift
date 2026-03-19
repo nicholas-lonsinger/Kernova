@@ -21,13 +21,7 @@ struct VMConsoleView: View {
             } else if let vm = instance.virtualMachine {
                 VMDisplayView(virtualMachine: vm)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .overlay {
-                        if instance.status == .paused {
-                            VMPauseOverlay(onResume: onResume)
-                                .transition(.opacity)
-                        }
-                    }
-                    .animation(.easeInOut(duration: 0.25), value: instance.status == .paused)
+                    .vmPauseOverlay(isPaused: instance.status == .paused, onResume: onResume)
             } else if instance.isColdPaused {
                 ContentUnavailableView(
                     "Suspended",

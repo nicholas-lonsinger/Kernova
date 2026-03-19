@@ -100,13 +100,7 @@ private struct FullscreenVMView: View {
         if let vm = instance.virtualMachine {
             VMDisplayView(virtualMachine: vm)
                 .ignoresSafeArea()
-                .overlay {
-                    if instance.status == .paused {
-                        VMPauseOverlay(onResume: onResume)
-                            .transition(.opacity)
-                    }
-                }
-                .animation(.easeInOut(duration: 0.25), value: instance.status == .paused)
+                .vmPauseOverlay(isPaused: instance.status == .paused, onResume: onResume)
         } else if instance.status.isTransitioning || instance.isColdPaused {
             VStack(spacing: 12) {
                 ProgressView()
