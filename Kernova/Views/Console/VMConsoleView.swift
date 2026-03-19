@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Console view with the VM display and lifecycle control toolbar.
+/// Console view that displays the VM screen, pause overlay, or a placeholder depending on VM state.
 struct VMConsoleView: View {
     @Bindable var instance: VMInstance
     var onResume: () -> Void

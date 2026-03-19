@@ -91,7 +91,7 @@ final class FullscreenWindowController: NSWindowController, NSWindowDelegate {
 // MARK: - Fullscreen SwiftUI View
 
 /// SwiftUI view used inside the fullscreen window. Shows the VM display when a
-/// `VZVirtualMachine` is available, or a placeholder otherwise.
+/// `VZVirtualMachine` is available (with a pause overlay when live-paused), or a placeholder otherwise.
 private struct FullscreenVMView: View {
     let instance: VMInstance
     var onResume: () -> Void

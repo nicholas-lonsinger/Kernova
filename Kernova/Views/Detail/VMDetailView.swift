@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Detail area that switches between settings (when stopped) and console (when running).
+/// Detail area that switches between settings, console, install progress, and transition views based on VM status.
 struct VMDetailView: View {
     @Bindable var instance: VMInstance
     @Bindable var viewModel: VMLibraryViewModel
