@@ -46,7 +46,7 @@ Kernova/
 │   ├── ContentView.swift               # Root NavigationSplitView with sidebar, detail, and toolbar
 │   ├── VMInstance+Display.swift        # Display-layer extension: cold-paused vs live-paused distinction
 │   ├── Sidebar/
-│   │   ├── SidebarView.swift           # VM list with double-click-to-start gesture
+│   │   ├── SidebarView.swift           # VM list with selection, double-click-to-start, and context menus
 │   │   └── VMRowView.swift             # Individual VM row (name, status, inline rename)
 │   ├── Detail/
 │   │   ├── VMDetailView.swift          # Main detail pane — toolbar + console/settings switch
