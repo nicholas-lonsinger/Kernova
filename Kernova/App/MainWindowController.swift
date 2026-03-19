@@ -203,12 +203,20 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSGestu
         case .stopped:
             return [Self.startVMIdentifier]
         case .running:
-            return [Self.pauseVMIdentifier, Self.stopVMIdentifier, Self.saveVMIdentifier, Self.fullscreenVMIdentifier]
+            return [Self.pauseVMIdentifier, Self.stopVMIdentifier,
+                    .space,
+                    Self.saveVMIdentifier,
+                    .space,
+                    Self.fullscreenVMIdentifier]
         case .paused:
             if instance.isColdPaused {
                 return [Self.resumeVMIdentifier, Self.stopVMIdentifier]
             }
-            return [Self.resumeVMIdentifier, Self.stopVMIdentifier, Self.saveVMIdentifier, Self.fullscreenVMIdentifier]
+            return [Self.resumeVMIdentifier, Self.stopVMIdentifier,
+                    .space,
+                    Self.saveVMIdentifier,
+                    .space,
+                    Self.fullscreenVMIdentifier]
         case .error:
             return [Self.startVMIdentifier]
         case .starting, .saving, .restoring, .installing:
