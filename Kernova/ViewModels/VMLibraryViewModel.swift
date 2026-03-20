@@ -8,6 +8,7 @@ import os
 final class VMLibraryViewModel {
 
     private static let logger = Logger(subsystem: "com.kernova.app", category: "VMLibraryViewModel")
+    private static let lastSelectedVMIDKey = "lastSelectedVMID"
 
     // MARK: - Services
 
@@ -18,7 +19,15 @@ final class VMLibraryViewModel {
     // MARK: - State
 
     var instances: [VMInstance] = []
-    var selectedID: UUID?
+    var selectedID: UUID? {
+        didSet {
+            if let selectedID {
+                UserDefaults.standard.set(selectedID.uuidString, forKey: Self.lastSelectedVMIDKey)
+            } else {
+                UserDefaults.standard.removeObject(forKey: Self.lastSelectedVMIDKey)
+            }
+        }
+    }
     var showCreationWizard = false
     var showDeleteConfirmation = false
     var showError = false
@@ -98,7 +107,14 @@ final class VMLibraryViewModel {
             .sorted { $0.configuration.createdAt < $1.configuration.createdAt }
 
             if selectedID == nil || !instances.contains(where: { $0.id == selectedID }) {
-                selectedID = instances.first?.id
+                if let savedString = UserDefaults.standard.string(forKey: Self.lastSelectedVMIDKey),
+                   let savedID = UUID(uuidString: savedString),
+                   instances.contains(where: { $0.id == savedID }) {
+                    selectedID = savedID
+                    Self.logger.debug("Restored last-selected VM from UserDefaults: \(savedID.uuidString)")
+                } else {
+                    selectedID = instances.first?.id
+                }
             }
             Self.logger.notice("Loaded \(self.instances.count) VMs")
         } catch {
