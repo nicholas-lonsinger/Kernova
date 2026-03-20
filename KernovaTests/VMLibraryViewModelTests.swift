@@ -6,14 +6,12 @@ import Foundation
 @MainActor
 struct VMLibraryViewModelTests {
 
-    private static let lastSelectedVMIDKey = "lastSelectedVMID"
-
     private func makeViewModel(
         storageService: MockVMStorageService = MockVMStorageService(),
         diskImageService: MockDiskImageService = MockDiskImageService(),
         virtualizationService: MockVirtualizationService = MockVirtualizationService()
     ) -> (VMLibraryViewModel, MockVMStorageService, MockDiskImageService, MockVirtualizationService) {
-        UserDefaults.standard.removeObject(forKey: Self.lastSelectedVMIDKey)
+        UserDefaults.standard.removeObject(forKey: VMLibraryViewModel.lastSelectedVMIDKey)
         let vm = VMLibraryViewModel(
             storageService: storageService,
             diskImageService: diskImageService,
@@ -97,7 +95,7 @@ struct VMLibraryViewModelTests {
 
         viewModel.selectedID = instance.id
 
-        let stored = UserDefaults.standard.string(forKey: Self.lastSelectedVMIDKey)
+        let stored = UserDefaults.standard.string(forKey: VMLibraryViewModel.lastSelectedVMIDKey)
         #expect(stored == instance.id.uuidString)
     }
 
@@ -110,7 +108,7 @@ struct VMLibraryViewModelTests {
 
         viewModel.selectedID = nil
 
-        let stored = UserDefaults.standard.string(forKey: Self.lastSelectedVMIDKey)
+        let stored = UserDefaults.standard.string(forKey: VMLibraryViewModel.lastSelectedVMIDKey)
         #expect(stored == nil)
     }
 
@@ -127,8 +125,8 @@ struct VMLibraryViewModelTests {
         storage.bundles[url2] = config2
 
         // Clear then seed UserDefaults before ViewModel init triggers loadVMs()
-        UserDefaults.standard.removeObject(forKey: Self.lastSelectedVMIDKey)
-        UserDefaults.standard.set(config2.id.uuidString, forKey: Self.lastSelectedVMIDKey)
+        UserDefaults.standard.removeObject(forKey: VMLibraryViewModel.lastSelectedVMIDKey)
+        UserDefaults.standard.set(config2.id.uuidString, forKey: VMLibraryViewModel.lastSelectedVMIDKey)
 
         let viewModel = VMLibraryViewModel(
             storageService: storage,
@@ -150,8 +148,8 @@ struct VMLibraryViewModelTests {
         storage.bundles[url] = config
 
         // Clear then seed UserDefaults with a UUID that doesn't match any VM
-        UserDefaults.standard.removeObject(forKey: Self.lastSelectedVMIDKey)
-        UserDefaults.standard.set(UUID().uuidString, forKey: Self.lastSelectedVMIDKey)
+        UserDefaults.standard.removeObject(forKey: VMLibraryViewModel.lastSelectedVMIDKey)
+        UserDefaults.standard.set(UUID().uuidString, forKey: VMLibraryViewModel.lastSelectedVMIDKey)
 
         let viewModel = VMLibraryViewModel(
             storageService: storage,

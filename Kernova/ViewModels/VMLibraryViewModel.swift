@@ -8,7 +8,7 @@ import os
 final class VMLibraryViewModel {
 
     private static let logger = Logger(subsystem: "com.kernova.app", category: "VMLibraryViewModel")
-    private static let lastSelectedVMIDKey = "lastSelectedVMID"
+    static let lastSelectedVMIDKey = "lastSelectedVMID"
 
     // MARK: - Services
 
@@ -21,6 +21,7 @@ final class VMLibraryViewModel {
     var instances: [VMInstance] = []
     var selectedID: UUID? {
         didSet {
+            guard selectedID != oldValue else { return }
             if let selectedID {
                 UserDefaults.standard.set(selectedID.uuidString, forKey: Self.lastSelectedVMIDKey)
             } else {
