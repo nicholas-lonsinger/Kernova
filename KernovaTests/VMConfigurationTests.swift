@@ -293,6 +293,34 @@ struct VMConfigurationTests {
         #expect(config.sharedDirectories == nil)
     }
 
+    @Test("Backward compatibility: decoding JSON with removed notes field is silently ignored")
+    func backwardCompatibilityRemovedNotesField() throws {
+        let json = """
+        {
+            "id": "12345678-1234-1234-1234-123456789012",
+            "name": "Old VM With Notes",
+            "guestOS": "linux",
+            "bootMode": "efi",
+            "cpuCount": 4,
+            "memorySizeInGB": 8,
+            "diskSizeInGB": 64,
+            "displayWidth": 1920,
+            "displayHeight": 1200,
+            "displayPPI": 144,
+            "networkEnabled": true,
+            "createdAt": "2025-01-01T00:00:00Z",
+            "notes": "These are old notes that should be ignored"
+        }
+        """
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let config = try decoder.decode(VMConfiguration.self, from: Data(json.utf8))
+
+        #expect(config.name == "Old VM With Notes")
+        #expect(config.guestOS == .linux)
+    }
+
     @Test("VMConfiguration with nil shared directories omits field from JSON")
     func nilSharedDirectoriesOmittedFromJSON() throws {
         let config = VMConfiguration(

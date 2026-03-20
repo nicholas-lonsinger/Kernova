@@ -244,5 +244,4 @@ struct VMSettingsView: View {
 
         sharedDirectoriesBinding.wrappedValue = current
     }
-
 }
