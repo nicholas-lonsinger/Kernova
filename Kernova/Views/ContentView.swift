@@ -25,7 +25,7 @@ struct ContentView: View {
             }
         }
         .toolbar {
-            ToolbarItemGroup(placement: .principal) {
+            ToolbarItemGroup(placement: .primaryAction) {
                 if let instance = viewModel.selectedInstance, !instance.isPreparing {
                     actionButtons(for: instance)
                 }
@@ -55,13 +55,17 @@ struct ContentView: View {
         case .running:
             pauseButton
             stopMenu(for: instance)
+            Divider()
             saveStateButton
+            Divider()
             fullscreenButton
         case .paused:
             resumeButton
             stopMenu(for: instance)
             if !instance.isColdPaused {
+                Divider()
                 saveStateButton
+                Divider()
                 fullscreenButton
             }
         case .starting, .saving, .restoring, .installing:
