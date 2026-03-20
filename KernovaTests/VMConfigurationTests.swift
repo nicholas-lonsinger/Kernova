@@ -48,8 +48,7 @@ struct VMConfigurationTests {
             bootMode: .macOS,
             cpuCount: 8,
             memorySizeInGB: 16,
-            diskSizeInGB: 200,
-            notes: "Test notes"
+            diskSizeInGB: 200
         )
 
         let encoder = JSONEncoder()
@@ -67,7 +66,6 @@ struct VMConfigurationTests {
         #expect(decoded.cpuCount == original.cpuCount)
         #expect(decoded.memorySizeInGB == original.memorySizeInGB)
         #expect(decoded.diskSizeInGB == original.diskSizeInGB)
-        #expect(decoded.notes == original.notes)
         #expect(decoded.networkEnabled == original.networkEnabled)
     }
 
@@ -158,8 +156,7 @@ struct VMConfigurationTests {
             "displayHeight": 1200,
             "displayPPI": 144,
             "networkEnabled": true,
-            "createdAt": "2025-01-01T00:00:00Z",
-            "notes": ""
+            "createdAt": "2025-01-01T00:00:00Z"
         }
         """
 
@@ -258,8 +255,7 @@ struct VMConfigurationTests {
             "displayHeight": 1200,
             "displayPPI": 144,
             "networkEnabled": true,
-            "createdAt": "2025-01-01T00:00:00Z",
-            "notes": ""
+            "createdAt": "2025-01-01T00:00:00Z"
         }
         """
 
@@ -286,8 +282,7 @@ struct VMConfigurationTests {
             "displayHeight": 1200,
             "displayPPI": 144,
             "networkEnabled": true,
-            "createdAt": "2025-01-01T00:00:00Z",
-            "notes": ""
+            "createdAt": "2025-01-01T00:00:00Z"
         }
         """
 
@@ -356,8 +351,7 @@ struct VMConfigurationTests {
             "displayPPI": 144,
             "networkEnabled": true,
             "isoPath": "/path/to/old.iso",
-            "createdAt": "2025-01-01T00:00:00Z",
-            "notes": ""
+            "createdAt": "2025-01-01T00:00:00Z"
         }
         """
 
@@ -427,8 +421,7 @@ struct VMConfigurationTests {
             "displayHeight": 1200,
             "displayPPI": 144,
             "networkEnabled": true,
-            "createdAt": "2025-01-01T00:00:00Z",
-            "notes": ""
+            "createdAt": "2025-01-01T00:00:00Z"
         }
         """
 
@@ -486,8 +479,7 @@ struct VMConfigurationTests {
             "displayHeight": 1200,
             "displayPPI": 144,
             "networkEnabled": true,
-            "createdAt": "2025-01-01T00:00:00Z",
-            "notes": ""
+            "createdAt": "2025-01-01T00:00:00Z"
         }
         """
 
