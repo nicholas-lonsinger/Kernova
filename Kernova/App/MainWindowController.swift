@@ -10,6 +10,7 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
     private let viewModel: VMLibraryViewModel
     private let splitViewController = NSSplitViewController()
     private var observingToolbar = false
+    private var sidebarCollapseObservation: NSKeyValueObservation?
 
     private static let logger = Logger(subsystem: "com.kernova.app", category: "MainWindowController")
 
@@ -72,6 +73,7 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
         window.setFrameAutosaveName("KernovaMainWindow")
 
         observeToolbarState()
+        observeSidebarCollapse()
         Self.logger.notice("Main window controller initialized")
     }
 
@@ -89,6 +91,30 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
     func windowWillClose(_ notification: Notification) {
         observingToolbar = false
         Self.logger.debug("Main window closing, toolbar observation stopped")
+    }
+
+    // MARK: - Sidebar Collapse Observation
+
+    private func observeSidebarCollapse() {
+        let sidebarItem = splitViewController.splitViewItems[0]
+        sidebarCollapseObservation = sidebarItem.observe(\.isCollapsed, options: [.initial, .new]) { [weak self] _, _ in
+            Task { @MainActor [weak self] in
+                self?.updateNewVMToolbarVisibility()
+            }
+        }
+    }
+
+    private func updateNewVMToolbarVisibility() {
+        guard let toolbar = window?.toolbar else { return }
+        let isCollapsed = splitViewController.splitViewItems[0].isCollapsed
+        let currentIndex = toolbar.items.firstIndex { $0.itemIdentifier == Self.toolbarNewVM }
+
+        if isCollapsed, let index = currentIndex {
+            toolbar.removeItem(at: index)
+        } else if !isCollapsed, currentIndex == nil {
+            // Insert after the leading flexible space
+            toolbar.insertItem(withItemIdentifier: Self.toolbarNewVM, at: 1)
+        }
     }
 
     // MARK: - Toolbar State Observation
@@ -142,9 +168,10 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
 
     func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
         [
-            Self.toolbarNewVM,
-            .sidebarTrackingSeparator,
             .flexibleSpace,
+            Self.toolbarNewVM,
+            .toggleSidebar,
+            .sidebarTrackingSeparator,
             Self.toolbarPlay,
             Self.toolbarPause,
             Self.toolbarStop,
@@ -158,6 +185,7 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
     func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
         [
             Self.toolbarNewVM,
+            .toggleSidebar,
             .sidebarTrackingSeparator,
             .flexibleSpace,
             .space,
