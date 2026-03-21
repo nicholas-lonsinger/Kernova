@@ -2,26 +2,29 @@ import Cocoa
 import SwiftUI
 import Virtualization
 
-/// Manages a dedicated fullscreen window displaying a single VM's screen.
+/// Manages a dedicated window displaying a single VM's screen, either as a
+/// resizable pop-out window or in native macOS fullscreen.
 ///
 /// On show the inline `VMDisplayView` in the main window is replaced by a placeholder
-/// (via `VMInstance.isInFullscreen`), and this controller creates its own
+/// (via `VMInstance.displayMode`), and this controller creates its own
 /// `VZVirtualMachineView` bound to the same `VZVirtualMachine`. On close the process
 /// reverses so the inline display re-appears.
 @MainActor
-final class FullscreenWindowController: NSWindowController, NSWindowDelegate {
+final class VMDisplayWindowController: NSWindowController, NSWindowDelegate {
 
     let vmID: UUID
     private(set) var closedProgrammatically = false
     private(set) var lastDisplayID: CGDirectDisplayID?
     let instance: VMInstance
+    private let enterFullscreen: Bool
     private var observingStatus = false
 
-    init(instance: VMInstance, onResume: @escaping () -> Void) {
+    init(instance: VMInstance, enterFullscreen: Bool, onResume: @escaping () -> Void) {
         self.vmID = instance.instanceID
         self.instance = instance
+        self.enterFullscreen = enterFullscreen
 
-        let contentView = FullscreenVMView(instance: instance, onResume: onResume)
+        let contentView = DetachedVMView(instance: instance, onResume: onResume)
         let hostingController = NSHostingController(rootView: contentView)
         hostingController.sizingOptions = []
 
@@ -36,6 +39,7 @@ final class FullscreenWindowController: NSWindowController, NSWindowDelegate {
         window.titlebarAppearsTransparent = true
         window.isMovableByWindowBackground = true
         window.collectionBehavior = [.fullScreenPrimary]
+        window.setFrameAutosaveName("VMDisplay-\(instance.instanceID)")
 
         super.init(window: window)
         window.delegate = self
@@ -48,9 +52,11 @@ final class FullscreenWindowController: NSWindowController, NSWindowDelegate {
     // MARK: - Lifecycle
 
     override func showWindow(_ sender: Any?) {
-        instance.isInFullscreen = true
+        instance.displayMode = enterFullscreen ? .fullscreen : .popOut
         super.showWindow(sender)
-        window?.toggleFullScreen(nil)
+        if enterFullscreen {
+            window?.toggleFullScreen(nil)
+        }
         observeStatus()
     }
 
@@ -62,17 +68,20 @@ final class FullscreenWindowController: NSWindowController, NSWindowDelegate {
             lastDisplayID = window?.screen?.displayID
         }
         observingStatus = false
-        instance.isInFullscreen = false
+        instance.displayMode = .inline
+    }
+
+    func windowDidEnterFullScreen(_ notification: Notification) {
+        instance.displayMode = .fullscreen
     }
 
     func windowDidExitFullScreen(_ notification: Notification) {
-        // User pressed Esc or swiped to exit macOS fullscreen — close the window entirely
-        window?.close()
+        instance.displayMode = .popOut
     }
 
     // MARK: - Status Observation
 
-    /// Automatically closes the fullscreen window when the VM stops, errors, or is cold-paused (save state).
+    /// Automatically closes the display window when the VM stops, errors, or is cold-paused (save state).
     private func observeStatus() {
         observingStatus = true
         withObservationTracking {
@@ -102,11 +111,11 @@ extension NSScreen {
     }
 }
 
-// MARK: - Fullscreen SwiftUI View
+// MARK: - Detached VM SwiftUI View
 
-/// SwiftUI view used inside the fullscreen window. Shows the VM display when a
+/// SwiftUI view used inside the display window. Shows the VM display when a
 /// `VZVirtualMachine` is available (with a pause overlay when live-paused), or a placeholder otherwise.
-private struct FullscreenVMView: View {
+private struct DetachedVMView: View {
     let instance: VMInstance
     var onResume: () -> Void
 

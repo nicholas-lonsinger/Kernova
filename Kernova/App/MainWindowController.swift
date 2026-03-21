@@ -24,7 +24,11 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
     private static let toolbarNewVM = NSToolbarItem.Identifier("newVM")
     private static let toolbarLifecycle = NSToolbarItem.Identifier("lifecycle")
     private static let toolbarSaveState = NSToolbarItem.Identifier("saveState")
-    private static let toolbarFullscreen = NSToolbarItem.Identifier("fullscreen")
+    private static let toolbarDisplay = NSToolbarItem.Identifier("display")
+
+    private enum DisplaySegment: Int {
+        case popOut = 0, fullscreen = 1
+    }
 
     // MARK: - Init
 
@@ -124,7 +128,7 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
             _ = self.viewModel.selectedID
             _ = self.viewModel.selectedInstance?.status
             _ = self.viewModel.selectedInstance?.isPreparing
-            _ = self.viewModel.selectedInstance?.isInFullscreen
+            _ = self.viewModel.selectedInstance?.displayMode
             _ = self.viewModel.selectedInstance?.virtualMachine
         } onChange: {
             Task { @MainActor [weak self] in
@@ -143,7 +147,7 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
 
         updateLifecycleGroup(in: toolbar)
         updateSaveStateItem(in: toolbar)
-        updateFullscreenItem(in: toolbar)
+        updateDisplayGroup(in: toolbar)
         toolbar.validateVisibleItems()
     }
 
@@ -186,21 +190,46 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
         subitem.isEnabled = instance.canSave
     }
 
-    private func updateFullscreenItem(in toolbar: NSToolbar) {
-        guard let group = toolbar.items.first(where: { $0.itemIdentifier == Self.toolbarFullscreen }) as? NSToolbarItemGroup,
-              let subitem = group.subitems.first else {
-            Self.logger.warning("updateFullscreenItem: fullscreen group missing or empty")
+    private func updateDisplayGroup(in toolbar: NSToolbar) {
+        guard let group = toolbar.items.first(where: { $0.itemIdentifier == Self.toolbarDisplay }) as? NSToolbarItemGroup,
+              group.subitems.count == 2 else {
+            Self.logger.warning("updateDisplayGroup: display group missing or has unexpected subitem count")
             return
         }
+
+        let popOutItem = group.subitems[DisplaySegment.popOut.rawValue]
+        let fullscreenItem = group.subitems[DisplaySegment.fullscreen.rawValue]
+
         guard let instance = viewModel.selectedInstance, !instance.isPreparing else {
-            subitem.isEnabled = false
+            popOutItem.isEnabled = false
+            fullscreenItem.isEnabled = false
             return
         }
-        subitem.isEnabled = instance.canFullscreen
-        let label = instance.isInFullscreen ? "Exit Fullscreen" : "Fullscreen"
-        if subitem.label != label {
-            subitem.label = label
-            group.label = label
+
+        let canUse = instance.canUseExternalDisplay
+        popOutItem.isEnabled = canUse
+        fullscreenItem.isEnabled = canUse
+
+        // Pop-out / Pop-in button
+        let popLabel = instance.isInSeparateWindow ? "Pop In" : "Pop Out"
+        if popOutItem.label != popLabel {
+            popOutItem.label = popLabel
+            popOutItem.image = NSImage(
+                systemSymbolName: instance.isInSeparateWindow ? "pip.enter" : "pip.exit",
+                accessibilityDescription: popLabel
+            )
+        }
+
+        // Fullscreen / Exit Fullscreen button
+        let fsLabel = instance.isInFullscreen ? "Exit Fullscreen" : "Fullscreen"
+        if fullscreenItem.label != fsLabel {
+            fullscreenItem.label = fsLabel
+            fullscreenItem.image = NSImage(
+                systemSymbolName: instance.isInFullscreen
+                    ? "arrow.down.right.and.arrow.up.left"
+                    : "arrow.up.left.and.arrow.down.right",
+                accessibilityDescription: fsLabel
+            )
         }
     }
 
@@ -214,7 +243,7 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
             .sidebarTrackingSeparator,
             Self.toolbarLifecycle,
             Self.toolbarSaveState,
-            Self.toolbarFullscreen,
+            Self.toolbarDisplay,
         ]
     }
 
@@ -226,7 +255,7 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
             .flexibleSpace,
             Self.toolbarLifecycle,
             Self.toolbarSaveState,
-            Self.toolbarFullscreen,
+            Self.toolbarDisplay,
         ]
     }
 
@@ -269,13 +298,20 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
                 action: #selector(AppDelegate.saveVM(_:))
             )
 
-        case Self.toolbarFullscreen:
-            return makeSingleItemGroup(
-                identifier: itemIdentifier,
-                label: "Fullscreen",
-                symbol: "arrow.up.left.and.arrow.down.right",
-                action: #selector(AppDelegate.toggleFullscreenDisplay(_:))
+        case Self.toolbarDisplay:
+            let group = NSToolbarItemGroup(
+                itemIdentifier: itemIdentifier,
+                images: [
+                    NSImage(systemSymbolName: "pip.exit", accessibilityDescription: "Pop Out")!,
+                    NSImage(systemSymbolName: "arrow.up.left.and.arrow.down.right", accessibilityDescription: "Fullscreen")!,
+                ],
+                selectionMode: .momentary,
+                labels: ["Pop Out", "Fullscreen"],
+                target: self,
+                action: #selector(displayAction(_:))
             )
+            group.label = "Display"
+            return group
 
         default:
             return nil
@@ -300,6 +336,21 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
             NSApp.sendAction(#selector(AppDelegate.pauseVM(_:)), to: nil, from: nil)
         case .stop:
             NSApp.sendAction(#selector(AppDelegate.stopVM(_:)), to: nil, from: nil)
+        }
+    }
+
+    // MARK: - Display Group Action
+
+    @objc private func displayAction(_ group: NSToolbarItemGroup) {
+        guard let segment = DisplaySegment(rawValue: group.selectedIndex) else {
+            Self.logger.warning("displayAction: unexpected selectedIndex \(group.selectedIndex)")
+            return
+        }
+        switch segment {
+        case .popOut:
+            NSApp.sendAction(#selector(AppDelegate.togglePopOut(_:)), to: nil, from: nil)
+        case .fullscreen:
+            NSApp.sendAction(#selector(AppDelegate.toggleFullscreen(_:)), to: nil, from: nil)
         }
     }
 
@@ -349,7 +400,7 @@ extension MainWindowController: NSToolbarItemValidation {
         }
 
         switch item.itemIdentifier {
-        case Self.toolbarNewVM, Self.toolbarLifecycle, Self.toolbarSaveState, Self.toolbarFullscreen:
+        case Self.toolbarNewVM, Self.toolbarLifecycle, Self.toolbarSaveState, Self.toolbarDisplay:
             // Group subitems are enabled/disabled directly in updateToolbarItems()
             return true
         default:
