@@ -9,6 +9,7 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
 
     private let viewModel: VMLibraryViewModel
     private let splitViewController = NSSplitViewController()
+    private let sidebarItem: NSSplitViewItem
     private var observingToolbar = false
     private var sidebarCollapseObservation: NSKeyValueObservation?
 
@@ -31,7 +32,7 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
         self.viewModel = viewModel
 
         let sidebarHost = NSHostingController(rootView: SidebarView(viewModel: viewModel))
-        let sidebarItem = NSSplitViewItem(sidebarWithViewController: sidebarHost)
+        self.sidebarItem = NSSplitViewItem(sidebarWithViewController: sidebarHost)
         sidebarItem.minimumThickness = 200
         sidebarItem.maximumThickness = 350
         splitViewController.addSplitViewItem(sidebarItem)
@@ -94,7 +95,7 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
     // MARK: - Sidebar Collapse Observation
 
     private func observeSidebarCollapse() {
-        let sidebarItem = splitViewController.splitViewItems[0]
+        let sidebarItem = sidebarItem
         sidebarCollapseObservation = sidebarItem.observe(\.isCollapsed, options: [.initial, .new]) { [weak self] _, _ in
             Task { @MainActor [weak self] in
                 self?.updateNewVMToolbarVisibility()
@@ -107,7 +108,7 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
             Self.logger.warning("updateNewVMToolbarVisibility: window or toolbar is nil — skipping update")
             return
         }
-        let isCollapsed = splitViewController.splitViewItems[0].isCollapsed
+        let isCollapsed = sidebarItem.isCollapsed
         let currentIndex = toolbar.items.firstIndex { $0.itemIdentifier == Self.toolbarNewVM }
 
         if isCollapsed, let index = currentIndex {
