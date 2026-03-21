@@ -151,7 +151,10 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
 
     private func updateLifecycleGroup(in toolbar: NSToolbar) {
         guard let group = toolbar.items.first(where: { $0.itemIdentifier == Self.toolbarLifecycle }) as? NSToolbarItemGroup,
-              group.subitems.count == 3 else { return }
+              group.subitems.count == 3 else {
+            Self.logger.warning("updateLifecycleGroup: lifecycle group missing or has unexpected subitem count")
+            return
+        }
 
         guard let instance = viewModel.selectedInstance, !instance.isPreparing else {
             group.subitems.forEach { $0.isEnabled = false }
@@ -174,7 +177,10 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
 
     private func updateSaveStateItem(in toolbar: NSToolbar) {
         guard let group = toolbar.items.first(where: { $0.itemIdentifier == Self.toolbarSaveState }) as? NSToolbarItemGroup,
-              let subitem = group.subitems.first else { return }
+              let subitem = group.subitems.first else {
+            Self.logger.warning("updateSaveStateItem: save state group missing or empty")
+            return
+        }
         guard let instance = viewModel.selectedInstance, !instance.isPreparing else {
             subitem.isEnabled = false
             return
@@ -184,7 +190,10 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
 
     private func updateFullscreenItem(in toolbar: NSToolbar) {
         guard let group = toolbar.items.first(where: { $0.itemIdentifier == Self.toolbarFullscreen }) as? NSToolbarItemGroup,
-              let subitem = group.subitems.first else { return }
+              let subitem = group.subitems.first else {
+            Self.logger.warning("updateFullscreenItem: fullscreen group missing or empty")
+            return
+        }
         guard let instance = viewModel.selectedInstance, !instance.isPreparing else {
             subitem.isEnabled = false
             return
