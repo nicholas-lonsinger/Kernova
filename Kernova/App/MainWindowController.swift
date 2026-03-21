@@ -144,6 +144,7 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
         }
 
         updateLifecycleGroup(in: toolbar)
+        updateSaveStateItem(in: toolbar)
         updateFullscreenItem(in: toolbar)
         toolbar.validateVisibleItems()
     }
@@ -152,9 +153,12 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
         guard let group = toolbar.items.first(where: { $0.itemIdentifier == Self.toolbarLifecycle }) as? NSToolbarItemGroup,
               group.subitems.count == 3 else { return }
 
-        let instance = viewModel.selectedInstance
-        let allDisabled = instance == nil || (instance?.isPreparing ?? false)
-        let canResume = instance?.status.canResume ?? false
+        guard let instance = viewModel.selectedInstance, !instance.isPreparing else {
+            group.subitems.forEach { $0.isEnabled = false }
+            return
+        }
+
+        let canResume = instance.status.canResume
         let playLabel = canResume ? "Resume" : "Start"
 
         let play = group.subitems[LifecycleSegment.play.rawValue]
@@ -163,16 +167,30 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
             play.image = NSImage(systemSymbolName: "play.fill", accessibilityDescription: playLabel)
         }
 
-        play.isEnabled = !allDisabled && ((instance?.status.canStart ?? false) || canResume)
-        group.subitems[LifecycleSegment.pause.rawValue].isEnabled = !allDisabled && (instance?.status.canPause ?? false)
-        group.subitems[LifecycleSegment.stop.rawValue].isEnabled = !allDisabled && (instance?.status.canStop ?? false)
+        play.isEnabled = instance.status.canStart || canResume
+        group.subitems[LifecycleSegment.pause.rawValue].isEnabled = instance.status.canPause
+        group.subitems[LifecycleSegment.stop.rawValue].isEnabled = instance.status.canStop
+    }
+
+    private func updateSaveStateItem(in toolbar: NSToolbar) {
+        guard let group = toolbar.items.first(where: { $0.itemIdentifier == Self.toolbarSaveState }) as? NSToolbarItemGroup,
+              let subitem = group.subitems.first else { return }
+        guard let instance = viewModel.selectedInstance, !instance.isPreparing else {
+            subitem.isEnabled = false
+            return
+        }
+        subitem.isEnabled = instance.canSave
     }
 
     private func updateFullscreenItem(in toolbar: NSToolbar) {
         guard let group = toolbar.items.first(where: { $0.itemIdentifier == Self.toolbarFullscreen }) as? NSToolbarItemGroup,
               let subitem = group.subitems.first else { return }
-        let isFullscreen = viewModel.selectedInstance?.isInFullscreen ?? false
-        let label = isFullscreen ? "Exit Fullscreen" : "Fullscreen"
+        guard let instance = viewModel.selectedInstance, !instance.isPreparing else {
+            subitem.isEnabled = false
+            return
+        }
+        subitem.isEnabled = instance.canFullscreen
+        let label = instance.isInFullscreen ? "Exit Fullscreen" : "Fullscreen"
         if subitem.label != label {
             subitem.label = label
             group.label = label
@@ -233,7 +251,7 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
                 target: self,
                 action: #selector(lifecycleAction(_:))
             )
-            group.label = "Controls"
+            group.label = "State Controls"
             return group
 
         case Self.toolbarSaveState:
@@ -324,12 +342,9 @@ extension MainWindowController: NSToolbarItemValidation {
         }
 
         switch item.itemIdentifier {
-        case Self.toolbarNewVM, Self.toolbarLifecycle:
+        case Self.toolbarNewVM, Self.toolbarLifecycle, Self.toolbarSaveState, Self.toolbarFullscreen:
+            // Group subitems are enabled/disabled directly in updateToolbarItems()
             return true
-        case Self.toolbarSaveState:
-            return instance.canSave
-        case Self.toolbarFullscreen:
-            return instance.canFullscreen
         default:
             Self.logger.debug("validateToolbarItem: unrecognized identifier '\(item.itemIdentifier.rawValue)'")
             return true
