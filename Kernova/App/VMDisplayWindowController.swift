@@ -97,6 +97,7 @@ final class VMDisplayWindowController: NSWindowController, NSWindowDelegate {
     }
 
     func windowDidExitFullScreen(_ notification: Notification) {
+        guard instance.displayMode == .fullscreen else { return }
         instance.displayMode = .popOut
     }
 
