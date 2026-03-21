@@ -14,12 +14,14 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
 
     private static let logger = Logger(subsystem: "com.kernova.app", category: "MainWindowController")
 
+    private enum LifecycleSegment: Int {
+        case play = 0, pause = 1, stop = 2
+    }
+
     // MARK: - Toolbar Item Identifiers
 
     private static let toolbarNewVM = NSToolbarItem.Identifier("newVM")
-    private static let toolbarPlay = NSToolbarItem.Identifier("play")
-    private static let toolbarPause = NSToolbarItem.Identifier("pause")
-    private static let toolbarStop = NSToolbarItem.Identifier("stop")
+    private static let toolbarLifecycle = NSToolbarItem.Identifier("lifecycle")
     private static let toolbarSaveState = NSToolbarItem.Identifier("saveState")
     private static let toolbarFullscreen = NSToolbarItem.Identifier("fullscreen")
 
@@ -28,14 +30,12 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
     init(viewModel: VMLibraryViewModel) {
         self.viewModel = viewModel
 
-        // Sidebar pane
         let sidebarHost = NSHostingController(rootView: SidebarView(viewModel: viewModel))
         let sidebarItem = NSSplitViewItem(sidebarWithViewController: sidebarHost)
         sidebarItem.minimumThickness = 200
         sidebarItem.maximumThickness = 350
         splitViewController.addSplitViewItem(sidebarItem)
 
-        // Detail pane
         let detailHost = NSHostingController(rootView: MainDetailView(viewModel: viewModel))
         let detailItem = NSSplitViewItem(viewController: detailHost)
         detailItem.minimumThickness = 400
@@ -43,7 +43,6 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
 
         splitViewController.splitView.autosaveName = "KernovaMainSplit"
 
-        // Window
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 1100, height: 700),
             styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
@@ -58,7 +57,6 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
         window.delegate = self
         self.shouldCascadeWindows = false
 
-        // Toolbar
         let toolbar = NSToolbar(identifier: "KernovaMainToolbar")
         toolbar.delegate = self
         toolbar.displayMode = .iconOnly
@@ -105,7 +103,10 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
     }
 
     private func updateNewVMToolbarVisibility() {
-        guard let toolbar = window?.toolbar else { return }
+        guard let toolbar = window?.toolbar else {
+            Self.logger.warning("updateNewVMToolbarVisibility: window or toolbar is nil — skipping update")
+            return
+        }
         let isCollapsed = splitViewController.splitViewItems[0].isCollapsed
         let currentIndex = toolbar.items.firstIndex { $0.itemIdentifier == Self.toolbarNewVM }
 
@@ -142,19 +143,29 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
             return
         }
 
-        updatePlayItem(in: toolbar)
+        updateLifecycleGroup(in: toolbar)
         updateFullscreenItem(in: toolbar)
         toolbar.validateVisibleItems()
     }
 
-    private func updatePlayItem(in toolbar: NSToolbar) {
-        guard let playItem = toolbar.items.first(where: { $0.itemIdentifier == Self.toolbarPlay }) else { return }
-        let canResume = viewModel.selectedInstance?.status.canResume ?? false
-        let label = canResume ? "Resume" : "Start"
-        playItem.label = label
-        playItem.image = NSImage(systemSymbolName: "play.fill", accessibilityDescription: label)
-        playItem.toolTip = canResume ? "Resume the virtual machine" : "Start this virtual machine"
-        playItem.action = canResume ? #selector(AppDelegate.resumeVM(_:)) : #selector(AppDelegate.startVM(_:))
+    private func updateLifecycleGroup(in toolbar: NSToolbar) {
+        guard let group = toolbar.items.first(where: { $0.itemIdentifier == Self.toolbarLifecycle }) as? NSToolbarItemGroup,
+              group.subitems.count == 3 else { return }
+
+        let instance = viewModel.selectedInstance
+        let allDisabled = instance == nil || (instance?.isPreparing ?? false)
+        let canResume = instance?.status.canResume ?? false
+        let playLabel = canResume ? "Resume" : "Start"
+
+        let play = group.subitems[LifecycleSegment.play.rawValue]
+        if play.label != playLabel {
+            play.label = playLabel
+            play.image = NSImage(systemSymbolName: "play.fill", accessibilityDescription: playLabel)
+        }
+
+        play.isEnabled = !allDisabled && ((instance?.status.canStart ?? false) || canResume)
+        group.subitems[LifecycleSegment.pause.rawValue].isEnabled = !allDisabled && (instance?.status.canPause ?? false)
+        group.subitems[LifecycleSegment.stop.rawValue].isEnabled = !allDisabled && (instance?.status.canStop ?? false)
     }
 
     private func updateFullscreenItem(in toolbar: NSToolbar) {
@@ -172,9 +183,7 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
             Self.toolbarNewVM,
             .toggleSidebar,
             .sidebarTrackingSeparator,
-            Self.toolbarPlay,
-            Self.toolbarPause,
-            Self.toolbarStop,
+            Self.toolbarLifecycle,
             .space,
             Self.toolbarSaveState,
             .space,
@@ -189,9 +198,7 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
             .sidebarTrackingSeparator,
             .flexibleSpace,
             .space,
-            Self.toolbarPlay,
-            Self.toolbarPause,
-            Self.toolbarStop,
+            Self.toolbarLifecycle,
             Self.toolbarSaveState,
             Self.toolbarFullscreen,
         ]
@@ -212,36 +219,21 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
                 toolTip: "Create a new virtual machine"
             )
 
-        case Self.toolbarPlay:
-            return makeToolbarItem(
-                identifier: itemIdentifier,
-                label: "Start",
-                symbol: "play.fill",
-                action: #selector(AppDelegate.startVM(_:)),
-                toolTip: "Start this virtual machine"
+        case Self.toolbarLifecycle:
+            let group = NSToolbarItemGroup(
+                itemIdentifier: itemIdentifier,
+                images: [
+                    NSImage(systemSymbolName: "play.fill", accessibilityDescription: "Start")!,
+                    NSImage(systemSymbolName: "pause.fill", accessibilityDescription: "Pause")!,
+                    NSImage(systemSymbolName: "stop.fill", accessibilityDescription: "Stop")!,
+                ],
+                selectionMode: .momentary,
+                labels: ["Start", "Pause", "Stop"],
+                target: self,
+                action: #selector(lifecycleAction(_:))
             )
-
-        case Self.toolbarPause:
-            return makeToolbarItem(
-                identifier: itemIdentifier,
-                label: "Pause",
-                symbol: "pause.fill",
-                action: #selector(AppDelegate.pauseVM(_:)),
-                toolTip: "Pause the virtual machine"
-            )
-
-        case Self.toolbarStop:
-            let item = NSMenuToolbarItem(itemIdentifier: itemIdentifier)
-            item.label = "Stop"
-            item.image = NSImage(systemSymbolName: "stop.fill", accessibilityDescription: "Stop")
-            item.action = #selector(AppDelegate.stopVM(_:))
-            item.toolTip = "Stop the virtual machine. Click and hold for Force Stop."
-            item.isBordered = true
-            item.showsIndicator = false
-            let menu = NSMenu()
-            menu.addItem(NSMenuItem(title: "Force Stop", action: #selector(AppDelegate.forceStopVM(_:)), keyEquivalent: ""))
-            item.menu = menu
-            return item
+            group.label = "Controls"
+            return group
 
         case Self.toolbarSaveState:
             return makeToolbarItem(
@@ -263,6 +255,27 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
 
         default:
             return nil
+        }
+    }
+
+    // MARK: - Lifecycle Group Action
+
+    @objc private func lifecycleAction(_ group: NSToolbarItemGroup) {
+        guard let segment = LifecycleSegment(rawValue: group.selectedIndex) else {
+            Self.logger.warning("lifecycleAction: unexpected selectedIndex \(group.selectedIndex)")
+            return
+        }
+        switch segment {
+        case .play:
+            if viewModel.selectedInstance?.status.canResume ?? false {
+                NSApp.sendAction(#selector(AppDelegate.resumeVM(_:)), to: nil, from: nil)
+            } else {
+                NSApp.sendAction(#selector(AppDelegate.startVM(_:)), to: nil, from: nil)
+            }
+        case .pause:
+            NSApp.sendAction(#selector(AppDelegate.pauseVM(_:)), to: nil, from: nil)
+        case .stop:
+            NSApp.sendAction(#selector(AppDelegate.stopVM(_:)), to: nil, from: nil)
         }
     }
 
@@ -294,17 +307,8 @@ extension MainWindowController: NSToolbarItemValidation {
         }
 
         switch item.itemIdentifier {
-        case Self.toolbarNewVM:
+        case Self.toolbarNewVM, Self.toolbarLifecycle:
             return true
-        case Self.toolbarPlay:
-            // Update action based on current state since canResume may have changed
-            let canResume = instance.status.canResume
-            item.action = canResume ? #selector(AppDelegate.resumeVM(_:)) : #selector(AppDelegate.startVM(_:))
-            return instance.status.canStart || canResume
-        case Self.toolbarPause:
-            return instance.status.canPause
-        case Self.toolbarStop:
-            return instance.status.canStop || instance.status.canForceStop
         case Self.toolbarSaveState:
             return instance.canSave
         case Self.toolbarFullscreen:
