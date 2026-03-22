@@ -152,6 +152,7 @@ final class VMDisplayWindowController: NSWindowController, NSWindowDelegate {
         if play.label != playLabel {
             play.label = playLabel
             play.image = NSImage(systemSymbolName: "play.fill", accessibilityDescription: playLabel)
+            play.toolTip = canResume ? "Resume the virtual machine" : "Start the virtual machine"
         }
 
         play.isEnabled = instance.status.canStart || canResume
@@ -182,6 +183,9 @@ final class VMDisplayWindowController: NSWindowController, NSWindowDelegate {
                 systemSymbolName: instance.isInSeparateWindow ? "pip.enter" : "pip.exit",
                 accessibilityDescription: popLabel
             )
+            popInItem.toolTip = instance.isInSeparateWindow
+                ? "Return display to the main window"
+                : "Open display in a separate window"
         }
 
         let fsLabel = instance.isInFullscreen ? "Exit Fullscreen" : "Fullscreen"
@@ -193,6 +197,9 @@ final class VMDisplayWindowController: NSWindowController, NSWindowDelegate {
                     : "arrow.up.left.and.arrow.down.right",
                 accessibilityDescription: fsLabel
             )
+            fullscreenItem.toolTip = instance.isInFullscreen
+                ? "Exit fullscreen display"
+                : "Enter fullscreen display"
         }
     }
 
@@ -273,6 +280,9 @@ extension VMDisplayWindowController: NSToolbarDelegate {
                 action: #selector(lifecycleAction(_:))
             )
             group.label = "State Controls"
+            group.subitems[LifecycleSegment.play.rawValue].toolTip = "Start the virtual machine"
+            group.subitems[LifecycleSegment.pause.rawValue].toolTip = "Pause the virtual machine"
+            group.subitems[LifecycleSegment.stop.rawValue].toolTip = "Stop the virtual machine"
             group.autovalidates = false
             return group
 
@@ -286,6 +296,7 @@ extension VMDisplayWindowController: NSToolbarDelegate {
                 action: #selector(AppDelegate.saveVM(_:))
             )
             group.label = "Save State"
+            group.subitems.first?.toolTip = "Save the virtual machine state to disk"
             group.autovalidates = false
             return group
 
@@ -302,6 +313,8 @@ extension VMDisplayWindowController: NSToolbarDelegate {
                 action: #selector(displayAction(_:))
             )
             group.label = "Display"
+            group.subitems[DisplaySegment.popIn.rawValue].toolTip = "Return display to the main window"
+            group.subitems[DisplaySegment.fullscreen.rawValue].toolTip = "Enter fullscreen display"
             group.autovalidates = false
             return group
 

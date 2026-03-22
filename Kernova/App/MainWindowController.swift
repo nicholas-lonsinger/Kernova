@@ -170,6 +170,7 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
         if play.label != playLabel {
             play.label = playLabel
             play.image = NSImage(systemSymbolName: "play.fill", accessibilityDescription: playLabel)
+            play.toolTip = canResume ? "Resume the virtual machine" : "Start the virtual machine"
         }
 
         play.isEnabled = instance.status.canStart || canResume
@@ -217,6 +218,9 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
                 systemSymbolName: instance.isInSeparateWindow ? "pip.enter" : "pip.exit",
                 accessibilityDescription: popLabel
             )
+            popOutItem.toolTip = instance.isInSeparateWindow
+                ? "Return display to the main window"
+                : "Open display in a separate window"
         }
 
         let fsLabel = instance.isInFullscreen ? "Exit Fullscreen" : "Fullscreen"
@@ -228,6 +232,9 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
                     : "arrow.up.left.and.arrow.down.right",
                 accessibilityDescription: fsLabel
             )
+            fullscreenItem.toolTip = instance.isInFullscreen
+                ? "Exit fullscreen display"
+                : "Enter fullscreen display"
         }
     }
 
@@ -286,6 +293,9 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
                 action: #selector(lifecycleAction(_:))
             )
             group.label = "State Controls"
+            group.subitems[LifecycleSegment.play.rawValue].toolTip = "Start the virtual machine"
+            group.subitems[LifecycleSegment.pause.rawValue].toolTip = "Pause the virtual machine"
+            group.subitems[LifecycleSegment.stop.rawValue].toolTip = "Stop the virtual machine"
             group.autovalidates = false
             return group
 
@@ -294,7 +304,8 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
                 identifier: itemIdentifier,
                 label: "Save State",
                 symbol: "square.and.arrow.down",
-                action: #selector(AppDelegate.saveVM(_:))
+                action: #selector(AppDelegate.saveVM(_:)),
+                toolTip: "Save the virtual machine state to disk"
             )
 
         case Self.toolbarDisplay:
@@ -310,6 +321,8 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
                 action: #selector(displayAction(_:))
             )
             group.label = "Display"
+            group.subitems[DisplaySegment.popOut.rawValue].toolTip = "Open display in a separate window"
+            group.subitems[DisplaySegment.fullscreen.rawValue].toolTip = "Enter fullscreen display"
             group.autovalidates = false
             return group
 
@@ -376,7 +389,8 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
         identifier: NSToolbarItem.Identifier,
         label: String,
         symbol: String,
-        action: Selector
+        action: Selector,
+        toolTip: String? = nil
     ) -> NSToolbarItemGroup {
         let group = NSToolbarItemGroup(
             itemIdentifier: identifier,
@@ -387,6 +401,7 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
             action: action
         )
         group.label = label
+        if let toolTip { group.subitems.first?.toolTip = toolTip }
         group.autovalidates = false
         return group
     }
