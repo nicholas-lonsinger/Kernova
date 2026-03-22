@@ -332,17 +332,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
                         instance.configuration.lastFullscreenDisplayID = displayID
                     }
 
+                    if !controller.closedProgrammatically {
+                        // User manually closed the display window
+                        instance.configuration.displayPreference = .inline
+                        Self.logger.debug("Cleared displayPreference for '\(instance.name)' (user closed display window)")
+                    }
+
+                    self.viewModel.saveConfiguration(for: instance)
+
                     if controller.closedProgrammatically {
                         // VM stopped/errored/cold-paused — check if app should quit
-                        self.viewModel.saveConfiguration(for: instance)
                         self.terminateIfIdle()
                         return
                     }
-
-                    // User manually closed the display window
-                    instance.configuration.displayPreference = .inline
-                    Self.logger.debug("Cleared displayPreference for '\(instance.name)' (user closed display window)")
-                    self.viewModel.saveConfiguration(for: instance)
                 }
                 self.viewModel.selectedID = vmID
 
