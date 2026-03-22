@@ -109,6 +109,7 @@ final class VMDisplayWindowController: NSWindowController, NSWindowDelegate {
     /// and to keep toolbar items in sync with current status.
     private func observeInstance() {
         observingInstance = true
+        updateToolbarItems()
         withObservationTracking {
             _ = self.instance.status
             _ = self.instance.virtualMachine
@@ -137,7 +138,6 @@ final class VMDisplayWindowController: NSWindowController, NSWindowDelegate {
         updateLifecycleGroup(in: toolbar)
         updateSaveStateItem(in: toolbar)
         updateDisplayGroup(in: toolbar)
-        toolbar.validateVisibleItems()
     }
 
     private func updateLifecycleGroup(in toolbar: NSToolbar) {
@@ -272,6 +272,7 @@ extension VMDisplayWindowController: NSToolbarDelegate {
                 action: #selector(lifecycleAction(_:))
             )
             group.label = "State Controls"
+            group.autovalidates = false
             return group
 
         case Self.toolbarSaveState:
@@ -284,6 +285,7 @@ extension VMDisplayWindowController: NSToolbarDelegate {
                 action: #selector(AppDelegate.saveVM(_:))
             )
             group.label = "Save State"
+            group.autovalidates = false
             return group
 
         case Self.toolbarDisplay:
@@ -299,6 +301,7 @@ extension VMDisplayWindowController: NSToolbarDelegate {
                 action: #selector(displayAction(_:))
             )
             group.label = "Display"
+            group.autovalidates = false
             return group
 
         default:

@@ -124,6 +124,7 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
 
     private func observeToolbarState() {
         observingToolbar = true
+        updateToolbarItems()
         withObservationTracking {
             _ = self.viewModel.selectedID
             _ = self.viewModel.selectedInstance?.status
@@ -148,7 +149,6 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
         updateLifecycleGroup(in: toolbar)
         updateSaveStateItem(in: toolbar)
         updateDisplayGroup(in: toolbar)
-        toolbar.validateVisibleItems()
     }
 
     private func updateLifecycleGroup(in toolbar: NSToolbar) {
@@ -286,6 +286,7 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
                 action: #selector(lifecycleAction(_:))
             )
             group.label = "State Controls"
+            group.autovalidates = false
             return group
 
         case Self.toolbarSaveState:
@@ -309,6 +310,7 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
                 action: #selector(displayAction(_:))
             )
             group.label = "Display"
+            group.autovalidates = false
             return group
 
         default:
@@ -385,6 +387,7 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
             action: action
         )
         group.label = label
+        group.autovalidates = false
         return group
     }
 }
