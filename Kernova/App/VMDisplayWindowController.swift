@@ -236,18 +236,18 @@ extension VMDisplayWindowController: NSToolbarDelegate {
 
     func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
         [
+            .flexibleSpace,
             Self.toolbarLifecycle,
             Self.toolbarSaveState,
-            .flexibleSpace,
             Self.toolbarDisplay,
         ]
     }
 
     func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
         [
+            .flexibleSpace,
             Self.toolbarLifecycle,
             Self.toolbarSaveState,
-            .flexibleSpace,
             Self.toolbarDisplay,
         ]
     }
