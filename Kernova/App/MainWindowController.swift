@@ -17,6 +17,11 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
 
     private enum LifecycleSegment: Int {
         case play = 0, pause = 1, stop = 2
+
+        static let startToolTip = "Start the virtual machine"
+        static let resumeToolTip = "Resume the virtual machine"
+        static let pauseToolTip = "Pause the virtual machine"
+        static let stopToolTip = "Stop the virtual machine"
     }
 
     // MARK: - Toolbar Item Identifiers
@@ -28,6 +33,11 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
 
     private enum DisplaySegment: Int {
         case popOut = 0, fullscreen = 1
+
+        static let popOutToolTip = "Open display in a separate window"
+        static let popInToolTip = "Return display to the main window"
+        static let fullscreenToolTip = "Enter fullscreen display"
+        static let exitFullscreenToolTip = "Exit fullscreen display"
     }
 
     // MARK: - Init
@@ -170,7 +180,7 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
         if play.label != playLabel {
             play.label = playLabel
             play.image = NSImage(systemSymbolName: "play.fill", accessibilityDescription: playLabel)
-            play.toolTip = canResume ? "Resume the virtual machine" : "Start the virtual machine"
+            play.toolTip = canResume ? LifecycleSegment.resumeToolTip : LifecycleSegment.startToolTip
         }
 
         play.isEnabled = instance.status.canStart || canResume
@@ -219,8 +229,8 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
                 accessibilityDescription: popLabel
             )
             popOutItem.toolTip = instance.isInSeparateWindow
-                ? "Return display to the main window"
-                : "Open display in a separate window"
+                ? DisplaySegment.popInToolTip
+                : DisplaySegment.popOutToolTip
         }
 
         let fsLabel = instance.isInFullscreen ? "Exit Fullscreen" : "Fullscreen"
@@ -233,8 +243,8 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
                 accessibilityDescription: fsLabel
             )
             fullscreenItem.toolTip = instance.isInFullscreen
-                ? "Exit fullscreen display"
-                : "Enter fullscreen display"
+                ? DisplaySegment.exitFullscreenToolTip
+                : DisplaySegment.fullscreenToolTip
         }
     }
 
@@ -293,9 +303,9 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
                 action: #selector(lifecycleAction(_:))
             )
             group.label = "State Controls"
-            group.subitems[LifecycleSegment.play.rawValue].toolTip = "Start the virtual machine"
-            group.subitems[LifecycleSegment.pause.rawValue].toolTip = "Pause the virtual machine"
-            group.subitems[LifecycleSegment.stop.rawValue].toolTip = "Stop the virtual machine"
+            group.subitems[LifecycleSegment.play.rawValue].toolTip = LifecycleSegment.startToolTip
+            group.subitems[LifecycleSegment.pause.rawValue].toolTip = LifecycleSegment.pauseToolTip
+            group.subitems[LifecycleSegment.stop.rawValue].toolTip = LifecycleSegment.stopToolTip
             group.autovalidates = false
             return group
 
@@ -321,8 +331,8 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
                 action: #selector(displayAction(_:))
             )
             group.label = "Display"
-            group.subitems[DisplaySegment.popOut.rawValue].toolTip = "Open display in a separate window"
-            group.subitems[DisplaySegment.fullscreen.rawValue].toolTip = "Enter fullscreen display"
+            group.subitems[DisplaySegment.popOut.rawValue].toolTip = DisplaySegment.popOutToolTip
+            group.subitems[DisplaySegment.fullscreen.rawValue].toolTip = DisplaySegment.fullscreenToolTip
             group.autovalidates = false
             return group
 
