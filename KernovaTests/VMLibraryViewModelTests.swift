@@ -408,14 +408,11 @@ struct VMLibraryViewModelTests {
         #expect(storage.saveConfigurationCallCount == 1)
     }
 
-    @Test("saveConfiguration surfaces error to user on failure")
-    func saveConfigurationSurfacesError() {
-        let storage = MockVMStorageService()
-        storage.saveConfigurationError = VMStorageError.bundleNotFound(
-            FileManager.default.temporaryDirectory
-        )
-        let (viewModel, _, _, _) = makeViewModel(storageService: storage)
+    @Test("saveConfiguration presents error on failure")
+    func saveConfigurationPresentsError() {
+        let (viewModel, storage, _, _) = makeViewModel()
         let instance = makeInstance()
+        storage.saveConfigurationError = NSError(domain: "test", code: 1)
 
         viewModel.saveConfiguration(for: instance)
 
