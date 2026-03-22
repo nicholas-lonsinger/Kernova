@@ -600,8 +600,7 @@ final class VMLibraryViewModel {
             }
         }
         if !failedNames.isEmpty {
-            let names = failedNames.joined(separator: ", ")
-            presentError(SleepWakeError.pauseFailed(vmNames: names))
+            presentError(SleepWakeError.pauseFailed(vmNames: failedNames))
         }
     }
 
@@ -630,8 +629,7 @@ final class VMLibraryViewModel {
             }
         }
         if !failedNames.isEmpty {
-            let names = failedNames.joined(separator: ", ")
-            presentError(SleepWakeError.resumeFailed(vmNames: names))
+            presentError(SleepWakeError.resumeFailed(vmNames: failedNames))
         }
     }
 
@@ -827,15 +825,15 @@ final class VMLibraryViewModel {
 
     /// Error type for sleep/wake lifecycle failures.
     private enum SleepWakeError: LocalizedError {
-        case pauseFailed(vmNames: String)
-        case resumeFailed(vmNames: String)
+        case pauseFailed(vmNames: [String])
+        case resumeFailed(vmNames: [String])
 
         var errorDescription: String? {
             switch self {
             case .pauseFailed(let vmNames):
-                return "Failed to pause the following VMs before sleep: \(vmNames). They may experience data corruption."
+                return "Failed to pause the following VMs before sleep: \(vmNames.joined(separator: ", ")). They may experience data corruption."
             case .resumeFailed(let vmNames):
-                return "Failed to resume the following VMs after wake: \(vmNames). You may need to restart them manually."
+                return "Failed to resume the following VMs after wake: \(vmNames.joined(separator: ", ")). You may need to restart them manually."
             }
         }
     }
