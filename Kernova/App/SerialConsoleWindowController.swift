@@ -15,7 +15,7 @@ final class SerialConsoleWindowController: NSWindowController, NSWindowDelegate 
     private static let logger = Logger(subsystem: "com.kernova.app", category: "SerialConsoleWindowController")
 
     let vmID: UUID
-    private let instance: VMInstance
+    let instance: VMInstance
     private var observingStatus = false
 
     init(instance: VMInstance) {

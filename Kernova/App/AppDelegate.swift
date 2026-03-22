@@ -17,12 +17,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
 
     private static let logger = Logger(subsystem: "com.kernova.app", category: "AppDelegate")
 
-    /// Returns the VM that menu actions should target: the display-window VM if its window
-    /// is key, otherwise the sidebar-selected VM.
+    /// Returns the VM that menu actions should target: the display or serial console
+    /// window's VM if its window is key, otherwise the sidebar-selected VM.
     private var activeInstance: VMInstance? {
-        if let keyWindow = NSApp.keyWindow,
-           let controller = displayWindows.values.first(where: { $0.window === keyWindow }) {
-            return controller.instance
+        if let keyWindow = NSApp.keyWindow {
+            if let controller = displayWindows.values.first(where: { $0.window === keyWindow }) {
+                return controller.instance
+            }
+            if let controller = serialConsoleWindows.values.first(where: { $0.window === keyWindow }) {
+                return controller.instance
+            }
         }
         return viewModel.selectedInstance
     }
