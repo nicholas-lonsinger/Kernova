@@ -70,7 +70,7 @@ enum VMGuestOS: String, Codable, CaseIterable, Sendable {
     var minDiskSizeInGB: Int {
         switch self {
         case .macOS: 64
-        case .linux: 25
+        case .linux: 10
         }
     }
 

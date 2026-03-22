@@ -16,7 +16,10 @@ struct DiskImageService: Sendable {
     private static let logger = Logger(subsystem: "com.kernova.app", category: "DiskImageService")
 
     /// The available template disk sizes in GB, matching bundled ASIF images.
-    static let templateSizes = [25, 50, 100, 150, 200, 500, 1000, 2000, 3000, 4000]
+    static let templateSizes = [
+        10, 15, 20, 25, 50, 75, 100, 125, 150, 175, 200, 225, 250,
+        500, 750, 1000, 1500, 2000, 2500, 3000, 3500, 4000
+    ]
 
     /// Creates an ASIF sparse disk image at the specified URL by decompressing a bundled template.
     ///
