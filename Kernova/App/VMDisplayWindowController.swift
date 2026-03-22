@@ -311,13 +311,8 @@ extension VMDisplayWindowController: NSToolbarDelegate {
 
 extension VMDisplayWindowController: NSToolbarItemValidation {
     func validateToolbarItem(_ item: NSToolbarItem) -> Bool {
-        switch item.itemIdentifier {
-        case Self.toolbarLifecycle, Self.toolbarSaveState, Self.toolbarDisplay:
-            // Group subitems are enabled/disabled directly in updateToolbarItems()
-            return true
-        default:
-            return true
-        }
+        // Group subitems are enabled/disabled directly in updateToolbarItems()
+        true
     }
 }
 

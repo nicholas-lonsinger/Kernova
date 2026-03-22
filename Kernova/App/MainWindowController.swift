@@ -210,7 +210,6 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
         popOutItem.isEnabled = canUse
         fullscreenItem.isEnabled = canUse
 
-        // Pop-out / Pop-in button
         let popLabel = instance.isInSeparateWindow ? "Pop In" : "Pop Out"
         if popOutItem.label != popLabel {
             popOutItem.label = popLabel
@@ -220,7 +219,6 @@ final class MainWindowController: NSWindowController, NSToolbarDelegate, NSWindo
             )
         }
 
-        // Fullscreen / Exit Fullscreen button
         let fsLabel = instance.isInFullscreen ? "Exit Fullscreen" : "Fullscreen"
         if fullscreenItem.label != fsLabel {
             fullscreenItem.label = fsLabel
