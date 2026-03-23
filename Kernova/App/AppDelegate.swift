@@ -91,6 +91,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
         // applicationShouldHandleReopen is never called. When it IS called
         // (dock clicks), it runs synchronously during the same event dispatch,
         // so it reads the flag before this Task body executes.
+        //
+        // Note: DispatchQueue.main.async cannot be used here — its @Sendable
+        // closure cannot access @MainActor-isolated state under strict concurrency.
         Task { @MainActor [weak self] in
             self?.wasJustActivated = false
         }
