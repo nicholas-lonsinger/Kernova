@@ -98,10 +98,10 @@ final class SpiceClipboardService {
         pendingOutboundText = clipboardText
 
         if !guestSupportsByDemand {
-            // Legacy mode: guest won't send REQUEST, deliver data immediately
-            if let textData = clipboardText.data(using: .utf8) {
-                let dataMessage = SpiceMessageBuilder.buildClipboardData(type: .utf8Text, data: textData)
-                writeToGuest(dataMessage)
+            // Legacy mode: guest won't send REQUEST, deliver data immediately.
+            // Reset lastGrabbedText on failure so the next call retries.
+            if !sendClipboardText(clipboardText) {
+                lastGrabbedText = nil
             }
         }
 
@@ -185,15 +185,16 @@ final class SpiceClipboardService {
 
         isConnected = true
         guestSupportsByDemand = byDemand
-        Self.logger.notice(
-            "Guest agent connected (caps: \(caps.map { String($0, radix: 16) }, privacy: .public), byDemand: \(byDemand, privacy: .public))"
-        )
 
         // If the guest requested our capabilities, send them back (non-requesting)
         if request {
             let reply = SpiceMessageBuilder.buildAnnounceCapabilities(request: false)
-            writeToGuest(reply)
+            guard writeToGuest(reply) else { return }
         }
+
+        Self.logger.notice(
+            "Guest agent connected (caps: \(caps.map { String($0, radix: 16) }, privacy: .public), byDemand: \(byDemand, privacy: .public))"
+        )
     }
 
     /// Guest announced it has new clipboard data — request it.
@@ -207,7 +208,7 @@ final class SpiceClipboardService {
         }
 
         let request = SpiceMessageBuilder.buildClipboardRequest(type: .utf8Text)
-        writeToGuest(request)
+        guard writeToGuest(request) else { return }
     }
 
     /// Guest is requesting clipboard data from us (response to our GRAB).
@@ -219,16 +220,13 @@ final class SpiceClipboardService {
             return
         }
 
-        guard let text = pendingOutboundText,
-              let textData = text.data(using: .utf8) else {
+        guard let text = pendingOutboundText else {
             Self.logger.debug("No pending outbound text for clipboard request")
             return
         }
 
         // Keep pendingOutboundText intact — the guest agent may retry the request
-        let dataMessage = SpiceMessageBuilder.buildClipboardData(type: .utf8Text, data: textData)
-        writeToGuest(dataMessage)
-        Self.logger.debug("Sent clipboard data to guest (\(textData.count, privacy: .public) bytes)")
+        sendClipboardText(text)
     }
 
     /// Guest delivered clipboard data — update our observable state.
@@ -250,7 +248,17 @@ final class SpiceClipboardService {
 
     // MARK: - Writing
 
+    /// Encodes text as UTF-8 and sends a `CLIPBOARD` data message to the guest.
     @discardableResult
+    private func sendClipboardText(_ text: String) -> Bool {
+        guard let textData = text.data(using: .utf8) else {
+            Self.logger.warning("Failed to encode clipboard text as UTF-8 (\(text.count, privacy: .public) characters)")
+            return false
+        }
+        let dataMessage = SpiceMessageBuilder.buildClipboardData(type: .utf8Text, data: textData)
+        return writeToGuest(dataMessage)
+    }
+
     private func writeToGuest(_ data: Data) -> Bool {
         do {
             try inputPipe.fileHandleForWriting.write(contentsOf: data)
