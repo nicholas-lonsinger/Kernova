@@ -381,7 +381,7 @@ struct ConfigurationBuilder: Sendable {
         spicePort.isConsole = false
         consoleDevice.ports[0] = spicePort
 
-        vzConfig.consoleDevices = [consoleDevice]
+        vzConfig.consoleDevices.append(consoleDevice)
 
         Self.logger.info("Configured SPICE clipboard console port for '\(config.name, privacy: .public)'")
         return (inputPipe, outputPipe)

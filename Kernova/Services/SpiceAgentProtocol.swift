@@ -376,15 +376,15 @@ extension Data {
 
     func readLittleEndianUInt32(at offset: Int) -> UInt32? {
         guard offset + 4 <= count else { return nil }
-        return subdata(in: offset..<offset + 4).withUnsafeBytes {
-            $0.loadUnaligned(as: UInt32.self).littleEndian
+        return withUnsafeBytes {
+            $0.loadUnaligned(fromByteOffset: offset, as: UInt32.self).littleEndian
         }
     }
 
     func readLittleEndianUInt64(at offset: Int) -> UInt64? {
         guard offset + 8 <= count else { return nil }
-        return subdata(in: offset..<offset + 8).withUnsafeBytes {
-            $0.loadUnaligned(as: UInt64.self).littleEndian
+        return withUnsafeBytes {
+            $0.loadUnaligned(fromByteOffset: offset, as: UInt64.self).littleEndian
         }
     }
 }
