@@ -67,9 +67,9 @@ final class VMToolbarManager: NSObject {
     // MARK: - Init
 
     init(configuration: Configuration, instanceProvider: @escaping () -> VMInstance?) {
-        var ids: Set = [configuration.lifecycleID, configuration.saveStateID, configuration.displayID]
-        if let clipboardID = configuration.clipboardID { ids.insert(clipboardID) }
-        assert(ids.count == (configuration.clipboardID != nil ? 4 : 3),
+        var allIDs = [configuration.lifecycleID, configuration.saveStateID, configuration.displayID]
+        if let clipboardID = configuration.clipboardID { allIDs.append(clipboardID) }
+        assert(Set(allIDs).count == allIDs.count,
                "VMToolbarManager.Configuration identifiers must be distinct")
         self.configuration = configuration
         self.instanceProvider = instanceProvider
