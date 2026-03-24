@@ -354,9 +354,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
         )
         menu.addItem(menuItem)
 
-        // Position the menu at the click location. NSMenu handles coordinate
-        // transformation internally, avoiding the toolbar view hierarchy issues
-        // that made NSPopover positioning unreliable.
+        // RATIONALE: NSMenu popup is used instead of NSPopover because toolbar
+        // view hierarchy makes NSPopover positioning unreliable.
         if let event = NSApp.currentEvent, let contentView = event.window?.contentView {
             menu.popUp(positioning: nil, at: event.locationInWindow, in: contentView)
         }

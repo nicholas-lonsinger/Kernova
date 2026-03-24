@@ -128,8 +128,6 @@ final class VMDisplayWindowController: NSWindowController, NSWindowDelegate {
             _ = self.instance.status
             _ = self.instance.virtualMachine
             _ = self.instance.displayMode
-            _ = self.instance.canAttachUSBDevices
-            _ = self.instance.attachedUSBDevices
         } onChange: {
             Task { @MainActor [weak self] in
                 guard let self, self.observingInstance else { return }

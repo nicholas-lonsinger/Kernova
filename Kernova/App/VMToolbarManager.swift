@@ -231,7 +231,12 @@ final class VMToolbarManager: NSObject {
               let group = toolbar.items.first(where: { $0.itemIdentifier == removableMediaID }) as? NSToolbarItemGroup,
               let subitem = group.subitems.first else { return }
 
-        subitem.isEnabled = instance?.canAttachUSBDevices ?? false
+        guard let instance else {
+            subitem.isEnabled = false
+            return
+        }
+
+        subitem.isEnabled = instance.canAttachUSBDevices
     }
 
     private func updateDisplayGroup(in toolbar: NSToolbar, instance: VMInstance?) {
