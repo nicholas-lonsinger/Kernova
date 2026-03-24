@@ -20,8 +20,12 @@ final class SpiceClipboardService {
 
     // MARK: - Observable State
 
-    /// The latest text received from the guest clipboard. Updated on the main actor.
-    var guestClipboardText: String = ""
+    /// Unified clipboard text buffer shared between guest and host.
+    ///
+    /// - Set by the guest agent when the guest copies text (via `handleClipboardData`)
+    /// - Editable by the user in the clipboard window's `TextEditor`
+    /// - Sent to the guest (via `CLIPBOARD_GRAB`) when the clipboard window loses focus
+    var clipboardText: String = ""
 
     /// `true` once the guest agent has completed the capabilities handshake.
     var isConnected: Bool = false
@@ -32,9 +36,11 @@ final class SpiceClipboardService {
     private let outputPipe: Pipe   // guest writes → host reads
     private var parser = SpiceAgentParser()
 
-    /// Pending clipboard request: when we send a GRAB, the guest replies with a REQUEST,
-    /// and we respond with the DATA. This holds the text until the request arrives.
+    /// Holds the text for the guest's `CLIPBOARD_REQUEST` response.
     private var pendingOutboundText: String?
+
+    /// Tracks the last text we sent via GRAB to avoid redundant grabs.
+    private var lastGrabbedText: String?
 
     /// Whether the guest has advertised `VD_AGENT_CAP_CLIPBOARD_BY_DEMAND`.
     private var guestSupportsClipboardByDemand = false
@@ -65,34 +71,23 @@ final class SpiceClipboardService {
 
     // MARK: - Public API
 
-    /// Sends text to the guest clipboard.
+    /// Sends a `CLIPBOARD_GRAB` to the guest if `clipboardText` has been edited
+    /// since the last grab (or since the guest last sent us data).
     ///
-    /// Sends a `CLIPBOARD_GRAB` to announce ownership, then waits for the guest
-    /// agent to send a `CLIPBOARD_REQUEST` before delivering the data. The text
-    /// is stored in `pendingOutboundText` and kept across multiple requests so
-    /// the agent can retry if needed.
-    ///
-    /// Sending data eagerly (before the REQUEST) does not work — the guest agent's
-    /// state machine rejects unsolicited CLIPBOARD data and retries via REQUEST.
-    func sendToGuest(_ text: String) {
-        guard isConnected else {
-            Self.logger.warning("Cannot send clipboard: guest agent not connected")
-            return
-        }
+    /// Called by `ClipboardWindowController` when the clipboard window loses focus.
+    /// The actual data delivery is by-demand: the guest sends a `CLIPBOARD_REQUEST`
+    /// when something pastes, and we respond with `clipboardText` at that point.
+    func grabIfChanged() {
+        guard isConnected else { return }
+        guard !clipboardText.isEmpty else { return }
+        guard clipboardText != lastGrabbedText else { return }
 
-        guard let textData = text.data(using: .utf8), !textData.isEmpty else {
-            Self.logger.debug("sendToGuest: empty or non-encodable text, skipping")
-            return
-        }
+        lastGrabbedText = clipboardText
+        pendingOutboundText = clipboardText
 
-        Self.logger.notice("sendToGuest: sending clipboard grab (\(textData.count, privacy: .public) bytes pending)")
-
-        // Store for the guest's CLIPBOARD_REQUEST response
-        pendingOutboundText = text
-
-        // Announce we have clipboard data — the guest will request it when ready
         let grabMessage = SpiceMessageBuilder.buildClipboardGrab(types: [.utf8Text])
         writeToGuest(grabMessage)
+        Self.logger.notice("Sent clipboard grab (\(self.clipboardText.utf8.count, privacy: .public) bytes pending)")
     }
 
     // MARK: - Reading
@@ -209,7 +204,8 @@ final class SpiceClipboardService {
             return
         }
 
-        guestClipboardText = text
+        clipboardText = text
+        lastGrabbedText = nil  // New text is from the guest, not us
         Self.logger.debug("Received guest clipboard text (\(text.count, privacy: .public) characters)")
     }
 

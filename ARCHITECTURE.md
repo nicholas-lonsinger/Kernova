@@ -169,7 +169,7 @@ Services are split by concurrency requirements:
 
 - **`SpiceAgentProtocol`** — Pure data types and parsing for the SPICE agent wire format. Defines VDI chunk headers, VDAgent message headers, clipboard message types, and capability bitmasks. Includes `SpiceMessageBuilder` (builds wire-ready messages) and `SpiceAgentParser` (incremental parser handling fragmented data across multiple pipe reads). Fully `Sendable`, no I/O.
 
-- **`SpiceClipboardService`** — `@MainActor` service that manages SPICE clipboard sharing for a single VM. Reads from the guest pipe on a background GCD queue, parses messages via `SpiceAgentParser`, and exposes `guestClipboardText` (observable) and `isConnected` to the UI. Sends clipboard data to the guest via `sendToGuest(_:)`. Uses raw pipes rather than `VZSpiceAgentPortAttachment` so clipboard data flows through the gated UI instead of the host `NSPasteboard`.
+- **`SpiceClipboardService`** — `@MainActor` service that manages SPICE clipboard sharing for a single VM. Reads from the guest pipe on a background GCD queue, parses messages via `SpiceAgentParser`, and exposes `clipboardText` (observable, editable by the UI) and `isConnected`. When the clipboard window loses focus, `grabIfChanged()` sends a `CLIPBOARD_GRAB` if the text was edited. Uses raw pipes rather than `VZSpiceAgentPortAttachment` so clipboard data flows through the gated UI instead of the host `NSPasteboard`.
 
 All service implementations conform to protocols defined in `Services/Protocols/`. This enables full dependency injection — tests use mock implementations that track call counts and support error injection.
 

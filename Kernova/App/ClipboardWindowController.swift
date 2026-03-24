@@ -26,14 +26,14 @@ final class ClipboardWindowController: NSWindowController, NSWindowDelegate {
         let hostingController = NSHostingController(rootView: contentView)
 
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 480, height: 400),
+            contentRect: NSRect(x: 0, y: 0, width: 480, height: 300),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
         )
         window.contentViewController = hostingController
         window.title = "\(instance.name) — Clipboard"
-        window.minSize = NSSize(width: 320, height: 280)
+        window.minSize = NSSize(width: 320, height: 200)
 
         super.init(window: window)
         window.delegate = self
@@ -58,6 +58,10 @@ final class ClipboardWindowController: NSWindowController, NSWindowDelegate {
     func windowWillClose(_ notification: Notification) {
         observingStatus = false
         Self.logger.debug("Clipboard window closing for VM '\(self.instance.name, privacy: .public)'")
+    }
+
+    func windowDidResignKey(_ notification: Notification) {
+        instance.clipboardService?.grabIfChanged()
     }
 
     // MARK: - Status Observation
