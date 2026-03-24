@@ -17,6 +17,10 @@ struct VMSettingsView: View {
         AVCaptureDevice.authorizationStatus(for: .audio)
     }
 
+    private func updateMicPermissionStatus() {
+        micPermission = currentMicPermission
+    }
+
     private var isRenaming: Bool {
         viewModel.activeRename == .detail(instance.id)
     }
@@ -247,13 +251,13 @@ struct VMSettingsView: View {
             }
         }
         .onChange(of: instance.configuration.microphoneEnabled) {
-            micPermission = currentMicPermission
+            updateMicPermissionStatus()
         }
         .onAppear {
-            micPermission = currentMicPermission
+            updateMicPermissionStatus()
         }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
-            micPermission = currentMicPermission
+            updateMicPermissionStatus()
         }
     }
 
