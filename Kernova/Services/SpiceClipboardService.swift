@@ -43,6 +43,11 @@ final class SpiceClipboardService {
     /// Tracks the last text we sent via GRAB to avoid redundant grabs.
     private var lastGrabbedText: String?
 
+    /// Whether the guest advertised `VD_AGENT_CAP_CLIPBOARD_BY_DEMAND`.
+    /// When `false` (legacy mode), we send clipboard data immediately after GRAB
+    /// instead of waiting for a REQUEST.
+    private var guestSupportsByDemand = false
+
     private static let logger = Logger(subsystem: "com.kernova.app", category: "SpiceClipboardService")
 
     // MARK: - Init
@@ -66,6 +71,7 @@ final class SpiceClipboardService {
         outputPipe.fileHandleForReading.readabilityHandler = nil
         isConnected = false
         pendingOutboundText = nil
+        guestSupportsByDemand = false
         Self.logger.info("SPICE clipboard service stopped")
     }
 
@@ -75,8 +81,9 @@ final class SpiceClipboardService {
     /// since the last grab (or since the guest last sent us data).
     ///
     /// Called by `ClipboardWindowController` when the clipboard window loses focus.
-    /// The actual data delivery is by-demand: the guest sends a `CLIPBOARD_REQUEST`
-    /// when something pastes, and we respond with `clipboardText` at that point.
+    /// - **By-demand guests** (modern): the guest sends a `CLIPBOARD_REQUEST` when
+    ///   something pastes, and we respond with `clipboardText` at that point.
+    /// - **Legacy guests**: we send `CLIPBOARD` data immediately after the GRAB.
     func grabIfChanged() {
         guard isConnected else { return }
         guard !clipboardText.isEmpty else { return }
@@ -89,7 +96,16 @@ final class SpiceClipboardService {
         // would permanently prevent retries (clipboardText == lastGrabbedText).
         lastGrabbedText = clipboardText
         pendingOutboundText = clipboardText
-        Self.logger.notice("Sent clipboard grab (\(self.clipboardText.utf8.count, privacy: .public) bytes pending)")
+
+        if !guestSupportsByDemand {
+            // Legacy mode: guest won't send REQUEST, deliver data immediately
+            if let textData = clipboardText.data(using: .utf8) {
+                let dataMessage = SpiceMessageBuilder.buildClipboardData(type: .utf8Text, data: textData)
+                writeToGuest(dataMessage)
+            }
+        }
+
+        Self.logger.notice("Sent clipboard grab (\(self.clipboardText.utf8.count, privacy: .public) bytes pending, byDemand: \(self.guestSupportsByDemand, privacy: .public))")
     }
 
     // MARK: - Reading
@@ -155,20 +171,23 @@ final class SpiceClipboardService {
 
     // MARK: - Message Handlers
 
+    // RATIONALE: Modern agents (spice-vdagent, UTM) only set VD_AGENT_CAP_CLIPBOARD_BY_DEMAND
+    // (bit 5) — the legacy VD_AGENT_CAP_CLIPBOARD (bit 3) is the old "always-sync" mode that
+    // no current agent advertises. We accept either bit as proof of clipboard support.
     private func handleCapabilities(request: Bool, caps: [UInt32]) {
         let hasClipboard = hasCapability(caps, .clipboard)
         let byDemand = hasCapability(caps, .clipboardByDemand)
 
-        Self.logger.notice(
-            "Guest agent capabilities (caps: \(caps.map { String($0, radix: 16) }, privacy: .public), clipboard: \(hasClipboard, privacy: .public), byDemand: \(byDemand, privacy: .public))"
-        )
-
-        guard hasClipboard else {
-            Self.logger.warning("Guest agent does not support clipboard — clipboard sharing will not function")
+        guard hasClipboard || byDemand else {
+            Self.logger.warning("Guest agent does not support clipboard (caps: \(caps.map { String($0, radix: 16) }, privacy: .public))")
             return
         }
 
         isConnected = true
+        guestSupportsByDemand = byDemand
+        Self.logger.notice(
+            "Guest agent connected (caps: \(caps.map { String($0, radix: 16) }, privacy: .public), byDemand: \(byDemand, privacy: .public))"
+        )
 
         // If the guest requested our capabilities, send them back (non-requesting)
         if request {
