@@ -31,7 +31,7 @@ struct VMDetailView: View {
                     }
 
                 case .running, .paused, .saving, .restoring:
-                    VMConsoleView(instance: instance) {
+                    VMConsoleView(instance: instance, viewModel: viewModel) {
                         Task { await viewModel.resume(instance) }
                     }
 
