@@ -743,14 +743,14 @@ struct ConfigurationBuilderTests {
         config.clipboardSharingEnabled = true
 
         let builder = ConfigurationBuilder()
-        // VZ validation may throw in the test runner (no virtualization entitlement).
-        // We're testing that clipboard pipes are populated — the VZ error is expected.
         do {
             let result = try builder.build(from: config, bundleURL: bundleURL)
             #expect(result.clipboardInputPipe != nil)
             #expect(result.clipboardOutputPipe != nil)
         } catch {
-            // VZ framework errors are expected in the test environment
+            withKnownIssue("VZ validation unavailable — assertions skipped") {
+                Issue.record("\(error)")
+            }
         }
     }
 
@@ -768,7 +768,9 @@ struct ConfigurationBuilderTests {
             #expect(result.clipboardInputPipe == nil)
             #expect(result.clipboardOutputPipe == nil)
         } catch {
-            // VZ framework errors are expected in the test environment
+            withKnownIssue("VZ validation unavailable — assertions skipped") {
+                Issue.record("\(error)")
+            }
         }
     }
 
@@ -791,7 +793,9 @@ struct ConfigurationBuilderTests {
             #expect(hasInput)
             #expect(hasOutput)
         } catch {
-            // VZ framework errors are expected in the test environment
+            withKnownIssue("VZ validation unavailable — assertions skipped") {
+                Issue.record("\(error)")
+            }
         }
     }
 
@@ -812,7 +816,9 @@ struct ConfigurationBuilderTests {
             #expect(!hasInput)
             #expect(hasOutput)
         } catch {
-            // VZ framework errors are expected in the test environment
+            withKnownIssue("VZ validation unavailable — assertions skipped") {
+                Issue.record("\(error)")
+            }
         }
     }
 }
