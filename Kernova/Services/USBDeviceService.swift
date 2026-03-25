@@ -38,6 +38,8 @@ final class USBDeviceService: USBDeviceProviding {
                 Self.logger.error("USB disk image is not writable: '\(diskImagePath, privacy: .public)'")
                 throw USBDeviceError.diskImageNotWritable(diskImagePath)
             case .notReadable:
+                Self.logger.fault("Unexpected .notReadable from resolveFile for '\(diskImagePath, privacy: .public)'")
+                assertionFailure("resolveFile should never throw .notReadable")
                 throw USBDeviceError.diskImageNotFound(diskImagePath)
             }
         }

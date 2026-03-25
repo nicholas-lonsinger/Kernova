@@ -56,8 +56,10 @@ struct IPSWService: Sendable {
 
                 // Close the race where the Task was cancelled before downloadTask
                 // was assigned — onCancel would have seen nil and done nothing.
+                // Resume the continuation directly because a never-started task
+                // won't fire didCompleteWithError.
                 guard !Task.isCancelled else {
-                    task.cancel()
+                    continuation.resume(throwing: CancellationError())
                     return
                 }
                 task.resume()

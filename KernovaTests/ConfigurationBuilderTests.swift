@@ -748,8 +748,13 @@ struct ConfigurationBuilderTests {
             #expect(result.clipboardInputPipe != nil)
             #expect(result.clipboardOutputPipe != nil)
         } catch {
-            withKnownIssue("VZ validation unavailable — assertions skipped") {
-                Issue.record("\(error)")
+            let isVZError = (error as NSError).domain == "VZErrorDomain"
+            if isVZError {
+                withKnownIssue("VZ validation unavailable — assertions skipped") {
+                    Issue.record("\(error)")
+                }
+            } else {
+                Issue.record("Unexpected non-VZ error: \(error)")
             }
         }
     }
@@ -768,8 +773,13 @@ struct ConfigurationBuilderTests {
             #expect(result.clipboardInputPipe == nil)
             #expect(result.clipboardOutputPipe == nil)
         } catch {
-            withKnownIssue("VZ validation unavailable — assertions skipped") {
-                Issue.record("\(error)")
+            let isVZError = (error as NSError).domain == "VZErrorDomain"
+            if isVZError {
+                withKnownIssue("VZ validation unavailable — assertions skipped") {
+                    Issue.record("\(error)")
+                }
+            } else {
+                Issue.record("Unexpected non-VZ error: \(error)")
             }
         }
     }
@@ -793,8 +803,13 @@ struct ConfigurationBuilderTests {
             #expect(hasInput)
             #expect(hasOutput)
         } catch {
-            withKnownIssue("VZ validation unavailable — assertions skipped") {
-                Issue.record("\(error)")
+            let isVZError = (error as NSError).domain == "VZErrorDomain"
+            if isVZError {
+                withKnownIssue("VZ validation unavailable — assertions skipped") {
+                    Issue.record("\(error)")
+                }
+            } else {
+                Issue.record("Unexpected non-VZ error: \(error)")
             }
         }
     }
@@ -816,8 +831,13 @@ struct ConfigurationBuilderTests {
             #expect(!hasInput)
             #expect(hasOutput)
         } catch {
-            withKnownIssue("VZ validation unavailable — assertions skipped") {
-                Issue.record("\(error)")
+            let isVZError = (error as NSError).domain == "VZErrorDomain"
+            if isVZError {
+                withKnownIssue("VZ validation unavailable — assertions skipped") {
+                    Issue.record("\(error)")
+                }
+            } else {
+                Issue.record("Unexpected non-VZ error: \(error)")
             }
         }
     }

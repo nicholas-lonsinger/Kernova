@@ -488,6 +488,8 @@ struct ConfigurationBuilder: Sendable {
                 logger.error("\(context, privacy: .public) is not writable: '\(path, privacy: .public)'")
                 throw notWritable ?? notFound
             case .notReadable:
+                logger.fault("Unexpected .notReadable from resolveFile for '\(path, privacy: .public)'")
+                assertionFailure("resolveFile should never throw .notReadable")
                 throw notFound
             }
         }
