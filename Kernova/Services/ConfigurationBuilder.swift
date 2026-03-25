@@ -486,7 +486,12 @@ struct ConfigurationBuilder: Sendable {
                 throw isDirectory
             case .notWritable:
                 logger.error("\(context, privacy: .public) is not writable: '\(path, privacy: .public)'")
-                throw notWritable ?? notFound
+                guard let notWritableError = notWritable else {
+                    logger.fault("resolveFile called with requireWritable but no notWritable error for '\(path, privacy: .public)'")
+                    assertionFailure("'notWritable' error must be provided when 'requireWritable' is true")
+                    throw notFound
+                }
+                throw notWritableError
             case .notReadable:
                 logger.fault("Unexpected .notReadable from resolveFile for '\(path, privacy: .public)'")
                 assertionFailure("resolveFile should never throw .notReadable")
@@ -521,10 +526,20 @@ struct ConfigurationBuilder: Sendable {
                 throw notADirectory
             case .notReadable:
                 logger.error("\(context, privacy: .public) is not readable: '\(path, privacy: .public)'")
-                throw notReadable ?? notFound
+                guard let notReadableError = notReadable else {
+                    logger.fault("resolveDirectory called with requireReadable but no notReadable error for '\(path, privacy: .public)'")
+                    assertionFailure("'notReadable' error must be provided when 'requireReadable' is true")
+                    throw notFound
+                }
+                throw notReadableError
             case .notWritable:
                 logger.error("\(context, privacy: .public) is not writable: '\(path, privacy: .public)'")
-                throw notWritable ?? notFound
+                guard let notWritableError = notWritable else {
+                    logger.fault("resolveDirectory called with requireWritable but no notWritable error for '\(path, privacy: .public)'")
+                    assertionFailure("'notWritable' error must be provided when 'requireWritable' is true")
+                    throw notFound
+                }
+                throw notWritableError
             }
         }
     }
