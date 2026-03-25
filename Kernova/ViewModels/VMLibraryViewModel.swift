@@ -658,10 +658,11 @@ final class VMLibraryViewModel {
         let config = clonedConfig
         let storage = storageService
         let diskMapping = internalDiskMapping
+        let bundleFilesToCopy = filesToCopy
         let task = Task { [weak self] in
             do {
                 try await Task.detached {
-                    let resultURL = try storage.cloneVMBundle(from: sourceBundleURL, newConfiguration: config, filesToCopy: filesToCopy)
+                    let resultURL = try storage.cloneVMBundle(from: sourceBundleURL, newConfiguration: config, filesToCopy: bundleFilesToCopy)
 
                     // Write regenerated MachineIdentifier file for macOS clones (off main thread)
                     #if arch(arm64)

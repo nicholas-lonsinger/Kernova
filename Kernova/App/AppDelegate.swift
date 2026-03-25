@@ -349,9 +349,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
 
         let popover = NSPopover()
         popover.behavior = .transient
-        popover.contentViewController = NSHostingController(
+        let hostingController = NSHostingController(
             rootView: RemovableMediaPopoverView(instance: instance, viewModel: viewModel)
         )
+        hostingController.sizingOptions = .preferredContentSize
+        popover.contentViewController = hostingController
 
         if let toolbarItem = sender as? NSToolbarItem {
             popover.show(relativeTo: toolbarItem)
