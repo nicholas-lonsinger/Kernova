@@ -2,7 +2,7 @@ import Foundation
 
 /// Represents the current phase of a macOS installation.
 enum MacOSInstallPhase: Sendable {
-    case downloading(progress: Double, bytesWritten: Int64, totalBytes: Int64)
+    case downloading(progress: Double, bytesWritten: Int64, totalBytes: Int64, bytesPerSecond: Double)
     case installing(progress: Double)
 }
 

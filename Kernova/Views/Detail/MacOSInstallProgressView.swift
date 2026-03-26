@@ -139,7 +139,7 @@ struct MacOSInstallProgressView: View {
     @ViewBuilder
     private var activeProgressBar: some View {
         switch installState.currentPhase {
-        case .downloading(let progress, _, _):
+        case .downloading(let progress, _, _, _):
             ProgressView(value: progress)
                 .progressViewStyle(.linear)
 
@@ -154,12 +154,27 @@ struct MacOSInstallProgressView: View {
     @ViewBuilder
     private var activeDetailText: some View {
         switch installState.currentPhase {
-        case .downloading(let progress, let bytesWritten, let totalBytes):
+        case .downloading(let progress, let bytesWritten, let totalBytes, let bytesPerSecond):
             let written = DataFormatters.formatBytesFixedWidth(UInt64(bytesWritten))
             let total = DataFormatters.formatBytesFixedWidth(UInt64(totalBytes))
             let pct = String(format: "%3d", Int(progress * 100))
                 .replacingOccurrences(of: " ", with: "\u{2007}")
-            Text("Downloading:\u{2007}\(written) / \(total) — \(pct)%")
+            VStack(spacing: 4) {
+                Text("Downloading:\u{2007}\(written) / \(total) — \(pct)%")
+                if bytesPerSecond > 0 {
+                    let speed = DataFormatters.formatSpeed(bytesPerSecond)
+                    let remaining = totalBytes - bytesWritten
+                    let eta = DataFormatters.formatETA(
+                        remainingBytes: remaining,
+                        bytesPerSecond: bytesPerSecond
+                    )
+                    if let eta {
+                        Text("\(speed) — \(eta)\u{2007}remaining")
+                    } else {
+                        Text(speed)
+                    }
+                }
+            }
 
         case .installing(let progress):
             Text("Installing macOS: \(Int(progress * 100))%")
