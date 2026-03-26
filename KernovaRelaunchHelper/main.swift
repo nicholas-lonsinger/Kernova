@@ -15,7 +15,7 @@ private let logger = Logger(subsystem: "com.kernova.app", category: "RelaunchHel
 
 guard CommandLine.arguments.count == 3,
       let pid = pid_t(CommandLine.arguments[1]) else {
-    fputs("Usage: KernovaRelaunchHelper <pid> <app-bundle-path>\n", stderr)
+    print("Usage: KernovaRelaunchHelper <pid> <app-bundle-path>", to: &standardError)
     exit(1)
 }
 
@@ -23,9 +23,18 @@ let appPath = CommandLine.arguments[2]
 let appURL = URL(fileURLWithPath: appPath)
 
 guard FileManager.default.fileExists(atPath: appPath) else {
-    fputs("App bundle not found: \(appPath)\n", stderr)
+    print("App bundle not found: \(appPath)", to: &standardError)
     exit(1)
 }
+
+/// A `TextOutputStream` that writes to stderr, used with `print(..., to:)`.
+private struct StandardError: TextOutputStream {
+    mutating func write(_ string: String) {
+        FileHandle.standardError.write(Data(string.utf8))
+    }
+}
+
+private var standardError = StandardError()
 
 // MARK: - Relaunch
 
@@ -79,16 +88,9 @@ func relaunchApp() async {
 
 logger.notice("Watching PID \(pid, privacy: .public) for exit, will relaunch \(appPath, privacy: .public)")
 
-// Handle the race where the main app already exited before we started monitoring.
-if kill(pid, 0) != 0, errno == ESRCH {
-    logger.notice("PID \(pid, privacy: .public) already exited, relaunching immediately")
-    Task { @MainActor in
-        await relaunchApp()
-    }
-    RunLoop.main.run(until: Date(timeIntervalSinceNow: 10))
-    exit(0)
-}
-
+// Set up the watcher FIRST to close the TOCTOU race window. If the app dies
+// during setup, the source catches it. If it was already dead, the subsequent
+// kill check catches it.
 let source = DispatchSource.makeProcessSource(identifier: pid, eventMask: .exit, queue: .main)
 
 source.setEventHandler {
@@ -101,8 +103,17 @@ source.setEventHandler {
 
 source.resume()
 
-// Safety timeout — the app should exit almost immediately since the helper
-// launches from applicationWillTerminate, but guard against unexpected hangs.
+// NOW check if the PID exited before the watcher was attached.
+if kill(pid, 0) != 0, errno == ESRCH {
+    logger.notice("PID \(pid, privacy: .public) already exited, relaunching immediately")
+    source.cancel()
+    Task { @MainActor in
+        await relaunchApp()
+    }
+}
+
+// Safety timeout — relaunchApp() calls exit(0) on success, so this only fires
+// if something unexpected prevents the relaunch from completing.
 DispatchQueue.main.asyncAfter(deadline: .now() + 15) {
     logger.warning("Timeout waiting for PID \(pid, privacy: .public) to exit, giving up")
     source.cancel()
