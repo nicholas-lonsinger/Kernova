@@ -26,10 +26,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
     /// reading a stale `true` before the async Task has run.
     private var wasJustActivated = false
 
-    /// Set when a `kAEQuitApplication` Apple Event arrives from System Settings
-    /// or the TCC daemon, indicating a TCC permission revocation. Only this flag
-    /// triggers the relaunch helper — all other termination paths leave it `false`.
+    /// Set by `handleQuitAppleEvent` when the sender is System Settings / TCC.
     private var terminationIsTCCRevocation = false
+
+    /// Set in `applicationShouldTerminate` when TCC revocation is detected AND
+    /// running VMs require an async save (`.terminateLater`). Checked in
+    /// `applicationWillTerminate` to launch the relaunch helper at the last moment.
+    private var relaunchAfterTermination = false
 
     /// Bundle identifiers that indicate a TCC-initiated quit.
     /// Stable since macOS 13 (Ventura) when System Preferences was replaced by
@@ -177,11 +180,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
 
         // When a TCC permission is revoked (e.g., microphone toggled in System Settings),
         // macOS quits and relaunches the app. The built-in relaunch times out while VMs
-        // are saving, so we launch a helper that watches our PID and relaunches us after
-        // we exit. The flag is set by handleQuitAppleEvent when the sender is System
-        // Settings or tccd.
+        // are saving. Mark for relaunch so applicationWillTerminate can launch the helper
+        // at the last moment, after saves are complete.
         if terminationIsTCCRevocation {
-            launchRelaunchHelper()
+            relaunchAfterTermination = true
         }
 
         Task { @MainActor in
@@ -202,6 +204,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
         }
 
         return .terminateLater
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        if relaunchAfterTermination {
+            launchRelaunchHelper()
+        }
     }
 
     /// Handles the `kAEQuitApplication` Apple Event by inspecting the sender.
