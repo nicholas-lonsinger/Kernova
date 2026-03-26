@@ -32,10 +32,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
     private var terminationIsTCCRevocation = false
 
     /// Bundle identifiers that indicate a TCC-initiated quit.
+    /// Stable since macOS 13 (Ventura) when System Preferences was replaced by
+    /// System Settings with per-pane extensions. May differ on earlier versions.
     private static let tccSenderBundleIDs: Set<String> = [
-        "com.apple.systemsettings",      // macOS Ventura+ (System Settings)
-        "com.apple.systempreferences",   // pre-Ventura (System Preferences)
-        "com.apple.tccd",                // TCC daemon
+        "com.apple.settings.PrivacySecurity.extension",
     ]
 
     private static let logger = Logger(subsystem: "com.kernova.app", category: "AppDelegate")
