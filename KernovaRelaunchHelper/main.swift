@@ -101,4 +101,12 @@ source.setEventHandler {
 
 source.resume()
 
+// Safety timeout — the app should exit almost immediately since the helper
+// launches from applicationWillTerminate, but guard against unexpected hangs.
+DispatchQueue.main.asyncAfter(deadline: .now() + 15) {
+    logger.warning("Timeout waiting for PID \(pid, privacy: .public) to exit, giving up")
+    source.cancel()
+    exit(1)
+}
+
 RunLoop.main.run()
