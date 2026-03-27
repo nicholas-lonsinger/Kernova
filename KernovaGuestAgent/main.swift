@@ -11,7 +11,7 @@ import os
 
 private let logger = Logger(subsystem: "com.kernova.agent", category: "GuestAgent")
 
-let version = "0.1.0"
+private let version = "0.1.0"
 
 if CommandLine.arguments.contains("--version") {
     print("kernova-agent \(version)")
@@ -19,5 +19,5 @@ if CommandLine.arguments.contains("--version") {
 }
 
 logger.notice("Kernova Guest Agent v\(version, privacy: .public) started (stub)")
-print("Kernova Guest Agent v\(version) — stub implementation, exiting.")
-exit(0)
+print("Kernova Guest Agent v\(version) — stub running (no-op, waiting for termination).")
+dispatchMain()
