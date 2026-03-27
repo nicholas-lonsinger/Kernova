@@ -11,10 +11,17 @@ import os
 
 private let logger = Logger(subsystem: "com.kernova.agent", category: "GuestAgent")
 
-private let version = "0.1.0"
+private let version: String = {
+    guard let v = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String else {
+        logger.fault("Version string not found in embedded Info.plist")
+        assertionFailure("Version string not found in embedded Info.plist")
+        return "unknown"
+    }
+    return v
+}()
 
 if CommandLine.arguments.contains("--version") {
-    print("kernova-agent \(version)")
+    print("kernova-agent \(version) (\(agentBuildNumber))")
     exit(0)
 }
 
