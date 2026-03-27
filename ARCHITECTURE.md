@@ -328,7 +328,7 @@ Two standalone command-line tool targets ship alongside the main app:
 
 - **KernovaRelaunchHelper** — Embedded in `Contents/MacOS/`. A watchdog that monitors the main app's PID and relaunches it after TCC-forced terminations. Launched by `AppDelegate` during quit when a TCC revocation is detected.
 
-- **KernovaGuestAgent** — Not embedded directly. A stub binary (prints version, exits) that is packaged into a DMG at build time by the "Package Guest Agent DMG" Run Script build phase. The DMG (containing the binary, `install.sh`, `uninstall.sh`, and a LaunchAgent plist) is placed in `Contents/Resources/KernovaGuestAgent.dmg`. At runtime, the DMG can be mounted to a guest VM via `USBDeviceService.attach(diskImagePath:readOnly:to:)`. The guest user runs `install.sh` to install the agent as a LaunchAgent in user-space (`~/Library/Application Support/Kernova/`). This is a pipeline stub — the real agent will implement host-guest communication via SPICE.
+- **KernovaGuestAgent** — Not embedded directly. A stub binary (prints version, exits) that is packaged into a DMG at build time by the "Package Guest Agent DMG" Run Script build phase. The disk image (containing the binary, `install.sh`, `uninstall.sh`, and a LaunchAgent plist) is placed in `Contents/Resources/KernovaGuestAgent.dmg`. At runtime, the DMG can be mounted to a guest VM via `USBDeviceService.attach(diskImagePath:readOnly:to:)`. The guest user runs `install.sh` to install the agent as a LaunchAgent in user-space (`~/Library/Application Support/Kernova/`). This is a pipeline stub — the real agent will implement host-guest communication via SPICE.
 
 ## Dependencies
 
