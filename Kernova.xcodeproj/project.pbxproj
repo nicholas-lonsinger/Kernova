@@ -55,8 +55,8 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				com.kernova.agent.plist,
-				install.sh,
-				uninstall.sh,
+				install.command,
+				uninstall.command,
 			);
 			target = A1000204 /* KernovaGuestAgent */;
 		};
@@ -348,8 +348,8 @@
 			);
 			inputPaths = (
 				"$(BUILT_PRODUCTS_DIR)/KernovaGuestAgent",
-				"$(SRCROOT)/KernovaGuestAgent/install.sh",
-				"$(SRCROOT)/KernovaGuestAgent/uninstall.sh",
+				"$(SRCROOT)/KernovaGuestAgent/install.command",
+				"$(SRCROOT)/KernovaGuestAgent/uninstall.command",
 				"$(SRCROOT)/KernovaGuestAgent/com.kernova.agent.plist",
 			);
 			name = "Package Guest Agent DMG";
@@ -360,7 +360,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/bash;
-			shellScript = "set -euo pipefail\n\nSTAGING_DIR=\"${DERIVED_FILE_DIR}/guest-agent-dmg-staging\"\nTEMP_DMG=\"${DERIVED_FILE_DIR}/guest-agent-temp.dmg\"\nRAW_PREFIX=\"${DERIVED_FILE_DIR}/guest-agent-raw\"\nDMG_OUTPUT=\"${BUILT_PRODUCTS_DIR}/${CONTENTS_FOLDER_PATH}/Resources/KernovaGuestAgent.dmg\"\n\nrm -rf \"${STAGING_DIR}\"\nmkdir -p \"${STAGING_DIR}\"\n\ncp \"${BUILT_PRODUCTS_DIR}/KernovaGuestAgent\" \"${STAGING_DIR}/kernova-agent\"\ncp \"${SRCROOT}/KernovaGuestAgent/install.sh\" \"${STAGING_DIR}/install.sh\"\ncp \"${SRCROOT}/KernovaGuestAgent/uninstall.sh\" \"${STAGING_DIR}/uninstall.sh\"\nchmod +x \"${STAGING_DIR}/install.sh\" \"${STAGING_DIR}/uninstall.sh\"\ncp \"${SRCROOT}/KernovaGuestAgent/com.kernova.agent.plist\" \"${STAGING_DIR}/com.kernova.agent.plist\"\n\nmkdir -p \"$(dirname \"${DMG_OUTPUT}\")\"\n\n# Create a UDRW DMG then convert to raw disk image (UDTO).\n# VZDiskImageStorageDeviceAttachment supports raw and DMG formats for USB\n# mass storage. Raw ensures the guest sees a mountable HFS+ filesystem.\nhdiutil create \\\n    -volname \"Kernova Guest Agent\" \\\n    -srcfolder \"${STAGING_DIR}\" \\\n    -ov -format UDRW \\\n    \"${TEMP_DMG}\"\nhdiutil convert \"${TEMP_DMG}\" -format UDTO -ov -o \"${RAW_PREFIX}\"\nmv \"${RAW_PREFIX}.cdr\" \"${DMG_OUTPUT}\"\nrm -f \"${TEMP_DMG}\"\n\n# Strip extended attributes that break code signing\nxattr -cr \"${DMG_OUTPUT}\"\n";
+			shellScript = "set -euo pipefail\n\nSTAGING_DIR=\"${DERIVED_FILE_DIR}/guest-agent-dmg-staging\"\nTEMP_DMG=\"${DERIVED_FILE_DIR}/guest-agent-temp.dmg\"\nRAW_PREFIX=\"${DERIVED_FILE_DIR}/guest-agent-raw\"\nDMG_OUTPUT=\"${BUILT_PRODUCTS_DIR}/${CONTENTS_FOLDER_PATH}/Resources/KernovaGuestAgent.dmg\"\n\nrm -rf \"${STAGING_DIR}\"\nmkdir -p \"${STAGING_DIR}\"\n\ncp \"${BUILT_PRODUCTS_DIR}/KernovaGuestAgent\" \"${STAGING_DIR}/kernova-agent\"\ncp \"${SRCROOT}/KernovaGuestAgent/install.command\" \"${STAGING_DIR}/install.command\"\ncp \"${SRCROOT}/KernovaGuestAgent/uninstall.command\" \"${STAGING_DIR}/uninstall.command\"\nchmod +x \"${STAGING_DIR}/install.command\" \"${STAGING_DIR}/uninstall.command\"\ncp \"${SRCROOT}/KernovaGuestAgent/com.kernova.agent.plist\" \"${STAGING_DIR}/com.kernova.agent.plist\"\n\nmkdir -p \"$(dirname \"${DMG_OUTPUT}\")\"\n\n# Create a UDRW DMG then convert to raw disk image (UDTO).\n# VZDiskImageStorageDeviceAttachment supports raw and DMG formats for USB\n# mass storage. Raw ensures the guest sees a mountable HFS+ filesystem.\nhdiutil create \\\n    -volname \"Kernova Guest Agent\" \\\n    -srcfolder \"${STAGING_DIR}\" \\\n    -ov -format UDRW \\\n    \"${TEMP_DMG}\"\nhdiutil convert \"${TEMP_DMG}\" -format UDTO -ov -o \"${RAW_PREFIX}\"\nmv \"${RAW_PREFIX}.cdr\" \"${DMG_OUTPUT}\"\nrm -f \"${TEMP_DMG}\"\n\n# Strip extended attributes that break code signing\nxattr -cr \"${DMG_OUTPUT}\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -645,6 +645,7 @@
 		A1000207 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CLANG_INSTRUMENT_FOR_OPTIMIZATION_PROFILING = NO;
 				CODE_SIGN_STYLE = Automatic;
 				DEAD_CODE_STRIPPING = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";

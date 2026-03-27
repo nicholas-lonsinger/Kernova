@@ -468,6 +468,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
         }
     }
 
+    @objc func attachGuestAgentDisk(_ sender: Any?) {
+        guard let instance = activeInstance else { return }
+        guard let url = Bundle.main.url(forResource: "KernovaGuestAgent", withExtension: "dmg") else {
+            Self.logger.fault("Guest agent disk image not found in app bundle")
+            assertionFailure("Guest agent disk image not found in app bundle")
+            return
+        }
+        viewModel.attachUSBDevice(
+            diskImagePath: url.path(percentEncoded: false),
+            readOnly: true,
+            to: instance
+        )
+    }
+
     // MARK: - Display Window (Pop-Out / Fullscreen)
 
     @objc func togglePopOut(_ sender: Any?) {
@@ -696,6 +710,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
             return activeInstance?.canShowClipboard ?? false
         case #selector(showRemovableMedia(_:)):
             return activeInstance?.canAttachUSBDevices ?? false
+        case #selector(attachGuestAgentDisk(_:)):
+            guard let instance = activeInstance, instance.canAttachUSBDevices else { return false }
+            guard let agentPath = Bundle.main.url(forResource: "KernovaGuestAgent", withExtension: "dmg")?.path(percentEncoded: false) else { return false }
+            return !instance.attachedUSBDevices.contains { $0.path == agentPath }
         case #selector(togglePopOut(_:)):
             guard let instance = activeInstance else { return false }
             let canUse = instance.canUseExternalDisplay
@@ -797,6 +815,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
         vmMenu.addItem(withTitle: "Clone", action: #selector(cloneVM(_:)), keyEquivalent: "d")
         let deleteItem = vmMenu.addItem(withTitle: "Move to Trash", action: #selector(deleteVM(_:)), keyEquivalent: "\u{08}")
         deleteItem.keyEquivalentModifierMask = [.command]
+        vmMenu.addItem(.separator())
+        vmMenu.addItem(NSMenuItem(
+            title: "Install Guest Agent…",
+            action: #selector(attachGuestAgentDisk(_:)),
+            keyEquivalent: ""
+        ))
         vmMenuItem.submenu = vmMenu
         mainMenu.addItem(vmMenuItem)
 
