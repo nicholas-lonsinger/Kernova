@@ -42,6 +42,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
     ]
 
     private static let logger = Logger(subsystem: "com.kernova.app", category: "AppDelegate")
+    private static let guestAgentDiskPath: String? = {
+        guard let path = Bundle.main.url(forResource: "KernovaGuestAgent", withExtension: "dmg")?.path(percentEncoded: false) else {
+            logger.warning("Guest agent disk image not found in app bundle — 'Install Guest Agent' will be unavailable")
+            return nil
+        }
+        return path
+    }()
 
     /// Returns the VM that menu actions should target: the display or serial console
     /// window's VM if its window is key, otherwise the sidebar-selected VM.
@@ -470,13 +477,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
 
     @objc func attachGuestAgentDisk(_ sender: Any?) {
         guard let instance = activeInstance else { return }
-        guard let url = Bundle.main.url(forResource: "KernovaGuestAgent", withExtension: "dmg") else {
+        guard let path = Self.guestAgentDiskPath else {
             Self.logger.fault("Guest agent disk image not found in app bundle")
             assertionFailure("Guest agent disk image not found in app bundle")
             return
         }
         viewModel.attachUSBDevice(
-            diskImagePath: url.path(percentEncoded: false),
+            diskImagePath: path,
             readOnly: true,
             to: instance
         )
@@ -712,7 +719,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
             return activeInstance?.canAttachUSBDevices ?? false
         case #selector(attachGuestAgentDisk(_:)):
             guard let instance = activeInstance, instance.canAttachUSBDevices else { return false }
-            guard let agentPath = Bundle.main.url(forResource: "KernovaGuestAgent", withExtension: "dmg")?.path(percentEncoded: false) else { return false }
+            guard let agentPath = Self.guestAgentDiskPath else { return false }
             return !instance.attachedUSBDevices.contains { $0.path == agentPath }
         case #selector(togglePopOut(_:)):
             guard let instance = activeInstance else { return false }

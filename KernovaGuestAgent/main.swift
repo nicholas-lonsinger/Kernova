@@ -8,6 +8,7 @@ import os
 // The real agent will implement host-guest communication via SPICE.
 //
 // Usage: kernova-agent [--version]
+// When run without flags, blocks indefinitely via dispatchMain() for launchd supervision.
 
 private let logger = Logger(subsystem: "com.kernova.agent", category: "GuestAgent")
 

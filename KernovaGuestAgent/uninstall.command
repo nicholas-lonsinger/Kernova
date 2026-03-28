@@ -1,5 +1,6 @@
 #!/bin/bash
 set -euo pipefail
+trap 'echo ""; echo "ERROR: An unexpected error occurred (line $LINENO)."; echo ""; read -p "Press Enter to exit..."' ERR
 
 echo "========================================"
 echo "  Kernova Guest Agent — Uninstaller"
@@ -26,7 +27,9 @@ if [[ "${choice}" =~ ^[Yy]$ ]]; then
     # Stop the agent
     launchctl bootout "gui/$(id -u)/${LABEL}" 2>/dev/null || true
 
-    # Remove files
+    # RATIONALE: rm is used instead of trash because this runs inside a guest VM
+    # where the trash CLI is not a standard macOS utility, and Finder-based trash
+    # (osascript) requires a GUI session that may not be available in headless VMs.
     rm -f "${INSTALL_DIR}/${BINARY_NAME}"
     rm -f "${LAUNCHAGENTS_DIR}/${PLIST_NAME}"
 
