@@ -21,10 +21,19 @@ private let version: String = {
     return v
 }()
 
+private let buildNumber: String = {
+    guard let b = Bundle.main.infoDictionary?["CFBundleVersion"] as? String else {
+        logger.fault("Build number not found in embedded Info.plist")
+        assertionFailure("Build number not found in embedded Info.plist")
+        return "0"
+    }
+    return b
+}()
+
 if CommandLine.arguments.contains("--version") {
-    print("kernova-agent \(version) (\(agentBuildNumber))")
+    print("kernova-agent \(version) (\(buildNumber))")
     exit(0)
 }
 
-logger.notice("Kernova Guest Agent v\(version, privacy: .public) (\(agentBuildNumber, privacy: .public)) started (stub — waiting for termination)")
+logger.notice("Kernova Guest Agent v\(version, privacy: .public) (\(buildNumber, privacy: .public)) started (stub — waiting for termination)")
 dispatchMain()
