@@ -9,9 +9,9 @@ import os
 /// - Reads messages sent by the host on `SpiceConstants.serverPort` (VDP_SERVER_PORT = 2)
 ///
 /// All mutable state is accessed exclusively on the main dispatch queue.
-// RATIONALE: @unchecked Sendable with DispatchQueue.main serialization mirrors the host-side
-// SpiceClipboardService pattern. @MainActor is impractical here because the entry point is
-// main.swift top-level code (nonisolated in Swift 6), not an @main app.
+// RATIONALE: @unchecked Sendable with DispatchQueue.main serialization is used because
+// @MainActor is impractical here — the entry point is main.swift top-level code
+// (nonisolated in Swift 6), not an @main app.
 final class GuestClipboardAgent: @unchecked Sendable {
 
     // MARK: - Callback

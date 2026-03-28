@@ -89,7 +89,7 @@ KernovaRelaunchHelper/
 KernovaGuestAgent/                      # Guest-side SPICE agent for macOS VMs + DMG packaging resources
 ├── main.swift                          # Entry point: signal handling, device discovery, reconnect loop
 ├── GuestClipboardAgent.swift           # SPICE clipboard protocol state machine + NSPasteboard polling
-├── SerialPortDiscovery.swift           # Discovers /dev/cu.virtio* console port character device
+├── SerialPortDiscovery.swift           # Opens the SPICE agent console port character device
 ├── Info.plist                          # Explicit Info.plist with preprocessor macro for CFBundleVersion
 ├── install.command                     # Guest-side installer: copies binary, registers LaunchAgent
 ├── uninstall.command                   # Guest-side uninstaller: stops agent, removes files

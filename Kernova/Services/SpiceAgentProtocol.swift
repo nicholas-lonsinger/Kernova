@@ -134,8 +134,8 @@ enum SpiceAgentCapability: Int, Sendable {
 
 /// Builds complete wire-ready messages (VDI chunk header + VDAgent message header + data).
 ///
-/// All messages are sent from the host (client) to the guest (agent), so the chunk
-/// port is always `VDP_SERVER_PORT` (the destination port the guest agent reads from).
+/// Shared between the host app and guest agent. The `port` parameter defaults to
+/// `serverPort` for host-side callers; guest-side code passes `clientPort` explicitly.
 enum SpiceMessageBuilder {
 
     /// Builds an `ANNOUNCE_CAPABILITIES` message advertising clipboard support.
@@ -245,7 +245,7 @@ struct SpiceAgentParser: Sendable {
     private static let maxChunkDataSize: UInt32 = 1_048_576  // 1 MB
 
     /// `true` when the buffer was reset due to overflow or corruption.
-    /// Checked by `SpiceClipboardService` to log at the appropriate level.
+    /// Consumers should check this after each `feed()` call to log appropriately.
     private(set) var didReset = false
 
     /// Feed raw bytes from the pipe into the parser.

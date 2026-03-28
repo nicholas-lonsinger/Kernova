@@ -477,6 +477,35 @@ struct SpiceAgentProtocolTests {
         #expect(port == SpiceConstants.serverPort)
     }
 
+    // MARK: - Capability Checking
+
+    @Test("hasCapability detects set capability bits")
+    func hasCapabilityDetectsSetBits() {
+        // clipboard = bit 3, clipboardByDemand = bit 5
+        let caps: [UInt32] = [(1 << 3) | (1 << 5)]
+        #expect(SpiceMessageBuilder.hasCapability(caps, .clipboard))
+        #expect(SpiceMessageBuilder.hasCapability(caps, .clipboardByDemand))
+    }
+
+    @Test("hasCapability returns false for unset bits")
+    func hasCapabilityReturnsFalseForUnsetBits() {
+        let caps: [UInt32] = [(1 << 3)]  // only clipboard set
+        #expect(!SpiceMessageBuilder.hasCapability(caps, .clipboardByDemand))
+        #expect(!SpiceMessageBuilder.hasCapability(caps, .monitorsConfig))
+    }
+
+    @Test("hasCapability returns false for empty caps array")
+    func hasCapabilityEmptyCaps() {
+        #expect(!SpiceMessageBuilder.hasCapability([], .clipboard))
+    }
+
+    @Test("hasCapability returns false when word index exceeds array length")
+    func hasCapabilityOutOfBounds() {
+        // clipboardNoReleaseOnRegrab = bit 16 (word 0, bit 16) — fits in single word
+        // But if we pass an empty array, wordIndex 0 exceeds bounds
+        #expect(!SpiceMessageBuilder.hasCapability([], .clipboardNoReleaseOnRegrab))
+    }
+
     // MARK: - Test Helpers
 
     /// Builds a fake guest→host message with the given type and payload.

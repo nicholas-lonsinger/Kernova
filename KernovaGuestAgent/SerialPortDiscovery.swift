@@ -1,11 +1,11 @@
 import Foundation
 import os
 
-/// Discovers and opens the SPICE agent serial device inside a macOS guest VM.
+/// Opens the SPICE agent serial device inside a macOS guest VM.
 ///
 /// The host creates a `VZVirtioConsoleDeviceConfiguration` with a port named
-/// `com.redhat.spice.0`. Inside the guest this appears as a character device
-/// under `/dev/`. This enum scans known candidate paths and opens the first match.
+/// `com.redhat.spice.0` (via `VZSpiceAgentPortAttachment.spiceAgentPortName`).
+/// Inside the guest this appears as a character device at `/dev/cu.<name>`.
 enum SerialPortDiscovery {
 
     private static let logger = Logger(subsystem: "com.kernova.agent", category: "SerialPortDiscovery")
@@ -19,12 +19,9 @@ enum SerialPortDiscovery {
     // from the main dispatch queue in main.swift's connection retry loop.
     nonisolated(unsafe) private static var hasLoggedDevices = false
 
-    /// Discovers and opens the SPICE agent serial device.
+    /// Attempts to open the SPICE agent serial device at the known path.
     ///
-    /// Scans candidate paths, opens the first matching device with `O_RDWR | O_NOCTTY | O_NONBLOCK`,
-    /// and returns a `FileHandle` for bidirectional communication.
-    ///
-    /// - Returns: A `FileHandle` wrapping the opened device, or `nil` if no device was found.
+    /// - Returns: A `FileHandle` wrapping the opened device, or `nil` if unavailable.
     static func openDevice() -> FileHandle? {
         if !hasLoggedDevices {
             logAvailableSerialDevices()
@@ -33,7 +30,12 @@ enum SerialPortDiscovery {
 
         let fd = open(devicePath, O_RDWR | O_NOCTTY | O_NONBLOCK)
         guard fd >= 0 else {
-            logger.debug("SPICE device not available at '\(devicePath, privacy: .public)'")
+            let code = errno
+            if code == ENOENT || code == ENXIO {
+                logger.debug("SPICE device not available at '\(devicePath, privacy: .public)'")
+            } else {
+                logger.warning("Failed to open SPICE device at '\(devicePath, privacy: .public)': \(String(cString: strerror(code)), privacy: .public) (errno=\(code, privacy: .public))")
+            }
             return nil
         }
         logger.notice("Opened SPICE device at '\(devicePath, privacy: .public)' (fd=\(fd, privacy: .public))")
