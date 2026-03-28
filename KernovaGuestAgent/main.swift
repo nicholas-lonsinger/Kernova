@@ -26,6 +26,5 @@ if CommandLine.arguments.contains("--version") {
     exit(0)
 }
 
-logger.notice("Kernova Guest Agent v\(version, privacy: .public) started (stub)")
-print("Kernova Guest Agent v\(version) — stub running (no-op, waiting for termination).")
+logger.notice("Kernova Guest Agent v\(version, privacy: .public) (\(agentBuildNumber, privacy: .public)) started (stub — waiting for termination)")
 dispatchMain()

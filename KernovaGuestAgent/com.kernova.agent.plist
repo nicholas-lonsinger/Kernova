@@ -14,9 +14,5 @@
 	<true/>
 	<key>ThrottleInterval</key>
 	<integer>10</integer>
-	<key>StandardOutPath</key>
-	<string>/tmp/kernova-agent.stdout.log</string>
-	<key>StandardErrorPath</key>
-	<string>/tmp/kernova-agent.stderr.log</string>
 </dict>
 </plist>
