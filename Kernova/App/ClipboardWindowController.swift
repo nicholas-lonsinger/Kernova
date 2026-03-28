@@ -20,15 +20,19 @@ final class ClipboardWindowController: NSWindowController, NSWindowDelegate {
         self.instance = instance
 
         let viewController = ClipboardContentViewController(instance: instance)
+        let initialSize = NSSize(width: 480, height: 300)
 
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 480, height: 300),
+            contentRect: NSRect(origin: .zero, size: initialSize),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
         )
         window.contentViewController = viewController
-        window.setContentSize(NSSize(width: 480, height: 300))
+        // RATIONALE: contentViewController assignment resizes the window to fit
+        // the content view's auto layout, which allows near-zero height.
+        // Re-establish the intended initial size before setFrameAutosaveName.
+        window.setContentSize(initialSize)
         window.title = "\(instance.name) — Clipboard"
         window.minSize = NSSize(width: 320, height: 250)
         super.init(window: window)
