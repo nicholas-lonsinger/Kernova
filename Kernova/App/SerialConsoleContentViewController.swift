@@ -226,6 +226,6 @@ final class SerialTextView: NSTextView {
     override var acceptsFirstResponder: Bool { true }
 
     override func becomeFirstResponder() -> Bool {
-        true
+        super.becomeFirstResponder()
     }
 }
