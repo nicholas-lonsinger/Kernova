@@ -12,6 +12,10 @@ enum SpiceConstants {
     /// Destination port for host → guest messages (`VDP_SERVER_PORT`).
     /// The guest agent reads from this port.
     static let serverPort: UInt32 = 2
+
+    /// Destination port for guest → host messages (`VDP_CLIENT_PORT`).
+    /// The host reads from this port.
+    static let clientPort: UInt32 = 1
 }
 
 // MARK: - VDI Chunk Header
@@ -135,7 +139,7 @@ enum SpiceAgentCapability: Int, Sendable {
 enum SpiceMessageBuilder {
 
     /// Builds an `ANNOUNCE_CAPABILITIES` message advertising clipboard support.
-    static func buildAnnounceCapabilities(request: Bool) -> Data {
+    static func buildAnnounceCapabilities(request: Bool, port: UInt32 = SpiceConstants.serverPort) -> Data {
         // Capabilities payload: request (uint32) + caps array (1 × uint32)
         var caps: UInt32 = 0
         setCapability(&caps, .clipboard)
@@ -145,44 +149,44 @@ enum SpiceMessageBuilder {
         payload.appendLittleEndian(request ? UInt32(1) : UInt32(0))
         payload.appendLittleEndian(caps)
 
-        return wrapMessage(type: .announceCapabilities, payload: payload)
+        return wrapMessage(type: .announceCapabilities, payload: payload, port: port)
     }
 
     /// Builds a `CLIPBOARD_GRAB` message announcing available clipboard types.
     ///
     /// Without `VD_AGENT_CAP_CLIPBOARD_SELECTION`, the grab payload is simply
     /// an array of `uint32_t` type values.
-    static func buildClipboardGrab(types: [SpiceClipboardType]) -> Data {
+    static func buildClipboardGrab(types: [SpiceClipboardType], port: UInt32 = SpiceConstants.serverPort) -> Data {
         var payload = Data(capacity: types.count * 4)
         for type in types {
             payload.appendLittleEndian(type.rawValue)
         }
-        return wrapMessage(type: .clipboardGrab, payload: payload)
+        return wrapMessage(type: .clipboardGrab, payload: payload, port: port)
     }
 
     /// Builds a `CLIPBOARD_REQUEST` message asking the peer for clipboard data.
-    static func buildClipboardRequest(type: SpiceClipboardType) -> Data {
+    static func buildClipboardRequest(type: SpiceClipboardType, port: UInt32 = SpiceConstants.serverPort) -> Data {
         var payload = Data(capacity: 4)
         payload.appendLittleEndian(type.rawValue)
-        return wrapMessage(type: .clipboardRequest, payload: payload)
+        return wrapMessage(type: .clipboardRequest, payload: payload, port: port)
     }
 
     /// Builds a `CLIPBOARD` message delivering clipboard data to the peer.
-    static func buildClipboardData(type: SpiceClipboardType, data clipboardData: Data) -> Data {
+    static func buildClipboardData(type: SpiceClipboardType, data clipboardData: Data, port: UInt32 = SpiceConstants.serverPort) -> Data {
         var payload = Data(capacity: 4 + clipboardData.count)
         payload.appendLittleEndian(type.rawValue)
         payload.append(clipboardData)
-        return wrapMessage(type: .clipboard, payload: payload)
+        return wrapMessage(type: .clipboard, payload: payload, port: port)
     }
 
     /// Builds a `CLIPBOARD_RELEASE` message.
-    static func buildClipboardRelease() -> Data {
-        wrapMessage(type: .clipboardRelease, payload: Data())
+    static func buildClipboardRelease(port: UInt32 = SpiceConstants.serverPort) -> Data {
+        wrapMessage(type: .clipboardRelease, payload: Data(), port: port)
     }
 
     // MARK: - Private
 
-    private static func wrapMessage(type: SpiceAgentMessageType, payload: Data) -> Data {
+    private static func wrapMessage(type: SpiceAgentMessageType, payload: Data, port: UInt32) -> Data {
         let header = VDAgentMessageHeader(
             type: type,
             opaque: 0,
@@ -190,10 +194,8 @@ enum SpiceMessageBuilder {
         )
 
         let chunkPayload = header.serialize() + payload
-        // Use serverPort (2): the port field indicates the destination, and
-        // the guest agent reads from VDP_SERVER_PORT.
         let chunk = VDIChunkHeader(
-            port: SpiceConstants.serverPort,
+            port: port,
             dataSize: UInt32(chunkPayload.count)
         )
 
