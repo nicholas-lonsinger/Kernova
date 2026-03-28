@@ -62,10 +62,7 @@ final class GuestClipboardAgent: @unchecked Sendable {
     /// Stops polling, reading, and releases the device.
     /// Does not invoke `onDisconnect` — used for intentional shutdown, not device loss.
     func stop() {
-        pollingTimer?.cancel()
-        pollingTimer = nil
-        deviceHandle.readabilityHandler = nil
-        isConnected = false
+        tearDown()
         Self.logger.notice("Guest clipboard agent stopped")
     }
 
@@ -99,12 +96,16 @@ final class GuestClipboardAgent: @unchecked Sendable {
         disconnect()
     }
 
-    /// Cancels polling, marks the connection as inactive, and notifies the caller.
-    private func disconnect() {
+    private func tearDown() {
         pollingTimer?.cancel()
         pollingTimer = nil
         deviceHandle.readabilityHandler = nil
         isConnected = false
+    }
+
+    /// Tears down and notifies the caller to trigger reconnection.
+    private func disconnect() {
+        tearDown()
         onDisconnect?()
     }
 
