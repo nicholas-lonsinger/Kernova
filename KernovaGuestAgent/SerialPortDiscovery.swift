@@ -15,18 +15,15 @@ enum SerialPortDiscovery {
     /// ("com.redhat.spice.0"); the guest kernel exposes it as `/dev/cu.<name>`.
     private static let devicePath = "/dev/cu.com.redhat.spice.0"
 
-    // RATIONALE: nonisolated(unsafe) is safe here because openDevice() is only called
-    // from the main dispatch queue in main.swift's connection retry loop.
-    nonisolated(unsafe) private static var hasLoggedDevices = false
+    private static let logOnce: () = {
+        logAvailableSerialDevices()
+    }()
 
     /// Attempts to open the SPICE agent serial device at the known path.
     ///
     /// - Returns: A `FileHandle` wrapping the opened device, or `nil` if unavailable.
     static func openDevice() -> FileHandle? {
-        if !hasLoggedDevices {
-            logAvailableSerialDevices()
-            hasLoggedDevices = true
-        }
+        _ = logOnce
 
         let fd = open(devicePath, O_RDWR | O_NOCTTY | O_NONBLOCK)
         guard fd >= 0 else {

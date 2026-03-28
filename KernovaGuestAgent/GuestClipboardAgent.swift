@@ -241,13 +241,18 @@ final class GuestClipboardAgent: @unchecked Sendable {
         let currentCount = pasteboard.changeCount
 
         guard currentCount != lastPasteboardChangeCount else { return }
-        lastPasteboardChangeCount = currentCount
 
         guard let text = pasteboard.string(forType: .string),
-              !text.isEmpty else { return }
+              !text.isEmpty else {
+            lastPasteboardChangeCount = currentCount
+            return
+        }
 
         // Avoid echoing back text we just wrote to the pasteboard from the host
-        guard text != lastGrabbedText else { return }
+        guard text != lastGrabbedText else {
+            lastPasteboardChangeCount = currentCount
+            return
+        }
 
         pendingOutboundText = text
         lastGrabbedText = text
@@ -262,8 +267,12 @@ final class GuestClipboardAgent: @unchecked Sendable {
             // Legacy mode: host won't send REQUEST, deliver data immediately.
             if !sendClipboardText(text) {
                 lastGrabbedText = nil
+                return
             }
         }
+
+        // Update change count only after successfully initiating the sync
+        lastPasteboardChangeCount = currentCount
 
         Self.logger.debug("Sent clipboard grab (\(text.utf8.count, privacy: .public) bytes pending, byDemand: \(self.hostSupportsByDemand, privacy: .public))")
     }
