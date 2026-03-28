@@ -27,6 +27,11 @@ private let buildNumber: String = {
         assertionFailure("Build number not found in embedded Info.plist")
         return "unknown"
     }
+    guard b != "AGENT_BUILD_NUMBER" else {
+        logger.fault("Build number was not preprocessed — literal macro name found in Info.plist")
+        assertionFailure("Build number was not preprocessed")
+        return "unknown"
+    }
     return b
 }()
 
