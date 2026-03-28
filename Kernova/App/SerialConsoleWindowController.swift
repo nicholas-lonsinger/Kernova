@@ -14,12 +14,10 @@ final class SerialConsoleWindowController: NSWindowController, NSWindowDelegate 
     private static let logger = Logger(subsystem: "com.kernova.app", category: "SerialConsoleWindowController")
 
     let instance: VMInstance
-    private let frameName: NSWindow.FrameAutosaveName
     private var observingStatus = false
 
     init(instance: VMInstance) {
         self.instance = instance
-        self.frameName = "SerialConsole-\(instance.instanceID.uuidString)"
 
         let viewController = SerialConsoleContentViewController(instance: instance)
 
@@ -33,11 +31,9 @@ final class SerialConsoleWindowController: NSWindowController, NSWindowDelegate 
         window.setContentSize(NSSize(width: 720, height: 480))
         window.title = "\(instance.name) — Serial Console"
         window.minSize = NSSize(width: 400, height: 200)
-        window.setFrameUsingName(frameName)
-
         super.init(window: window)
         window.delegate = self
-        window.setFrameAutosaveName(frameName)
+        window.setFrameAutosaveName("SerialConsole-\(instance.instanceID.uuidString)")
     }
 
     required init?(coder: NSCoder) {
