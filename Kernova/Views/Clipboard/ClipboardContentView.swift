@@ -53,7 +53,7 @@ struct ClipboardContentView: View {
             Spacer()
         }
         .padding(.horizontal)
-        .padding(.vertical, 6)
+        .frame(minHeight: 28)
         .background(.background)
     }
 }

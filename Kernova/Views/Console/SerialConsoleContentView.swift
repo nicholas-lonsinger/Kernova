@@ -28,9 +28,10 @@ struct SerialConsoleContentView: View {
                     .foregroundStyle(.secondary)
             }
             .padding(.horizontal, 10)
-            .padding(.vertical, 5)
+            .frame(minHeight: 28)
             .background(.bar)
         }
+        .frame(minWidth: 400, idealWidth: 720, minHeight: 200, idealHeight: 480)
     }
 
     private var isConnected: Bool {

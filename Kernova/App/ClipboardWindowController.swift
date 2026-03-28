@@ -24,7 +24,6 @@ final class ClipboardWindowController: NSWindowController, NSWindowDelegate {
 
         let contentView = ClipboardContentView(instance: instance)
         let hostingController = NSHostingController(rootView: contentView)
-        hostingController.sizingOptions = []
 
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 480, height: 300),
@@ -35,11 +34,10 @@ final class ClipboardWindowController: NSWindowController, NSWindowDelegate {
         window.contentViewController = hostingController
         window.title = "\(instance.name) — Clipboard"
         window.minSize = NSSize(width: 320, height: 250)
+        window.setFrameAutosaveName("Clipboard-\(instance.instanceID.uuidString)")
 
         super.init(window: window)
         window.delegate = self
-
-        window.restoreFrame(named: "Clipboard-\(instance.instanceID.uuidString)")
     }
 
     required init?(coder: NSCoder) {

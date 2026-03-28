@@ -24,7 +24,6 @@ final class SerialConsoleWindowController: NSWindowController, NSWindowDelegate 
 
         let contentView = SerialConsoleContentView(instance: instance)
         let hostingController = NSHostingController(rootView: contentView)
-        hostingController.sizingOptions = []
 
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 720, height: 480),
@@ -35,11 +34,10 @@ final class SerialConsoleWindowController: NSWindowController, NSWindowDelegate 
         window.contentViewController = hostingController
         window.title = "\(instance.name) — Serial Console"
         window.minSize = NSSize(width: 400, height: 200)
+        window.setFrameAutosaveName("SerialConsole-\(instance.instanceID.uuidString)")
 
         super.init(window: window)
         window.delegate = self
-
-        window.restoreFrame(named: "SerialConsole-\(instance.instanceID.uuidString)")
     }
 
     required init?(coder: NSCoder) {
