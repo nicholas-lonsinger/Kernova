@@ -14,10 +14,12 @@ final class ClipboardWindowController: NSWindowController, NSWindowDelegate {
     private static let logger = Logger(subsystem: "com.kernova.app", category: "ClipboardWindowController")
 
     let instance: VMInstance
+    private let frameName: NSWindow.FrameAutosaveName
     private var observingStatus = false
 
     init(instance: VMInstance) {
         self.instance = instance
+        self.frameName = "Clipboard-\(instance.instanceID.uuidString)"
 
         let viewController = ClipboardContentViewController(instance: instance)
 
@@ -28,12 +30,14 @@ final class ClipboardWindowController: NSWindowController, NSWindowDelegate {
             defer: false
         )
         window.contentViewController = viewController
+        window.setContentSize(NSSize(width: 480, height: 300))
         window.title = "\(instance.name) — Clipboard"
         window.minSize = NSSize(width: 320, height: 250)
-        window.setFrameAutosaveName("Clipboard-\(instance.instanceID.uuidString)")
+        window.setFrameUsingName(frameName)
 
         super.init(window: window)
         window.delegate = self
+        window.setFrameAutosaveName(frameName)
     }
 
     required init?(coder: NSCoder) {
