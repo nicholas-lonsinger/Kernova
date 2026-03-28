@@ -205,6 +205,14 @@ enum SpiceMessageBuilder {
     private static func setCapability(_ caps: inout UInt32, _ cap: SpiceAgentCapability) {
         caps |= 1 << UInt32(cap.rawValue)
     }
+
+    /// Checks whether a capability bit is set in a capabilities array.
+    static func hasCapability(_ caps: [UInt32], _ cap: SpiceAgentCapability) -> Bool {
+        let wordIndex = cap.rawValue / 32
+        let bitIndex = cap.rawValue % 32
+        guard wordIndex < caps.count else { return false }
+        return (caps[wordIndex] & (1 << UInt32(bitIndex))) != 0
+    }
 }
 
 // MARK: - Message Parser

@@ -45,8 +45,6 @@ final class GuestClipboardAgent: @unchecked Sendable {
 
     init(deviceHandle: FileHandle) {
         self.deviceHandle = deviceHandle
-        // Snapshot the current pasteboard change count so we don't immediately
-        // re-grab whatever is already on the clipboard at launch.
         self.lastPasteboardChangeCount = NSPasteboard.general.changeCount
     }
 
@@ -62,6 +60,7 @@ final class GuestClipboardAgent: @unchecked Sendable {
     }
 
     /// Stops polling, reading, and releases the device.
+    /// Does not invoke `onDisconnect` — used for intentional shutdown, not device loss.
     func stop() {
         pollingTimer?.cancel()
         pollingTimer = nil
@@ -73,7 +72,6 @@ final class GuestClipboardAgent: @unchecked Sendable {
     // MARK: - Reading
 
     private func startReading() {
-        // Capture for the closure (runs on a background GCD queue)
         let logger = Self.logger
 
         deviceHandle.readabilityHandler = { [weak self] handle in
@@ -98,9 +96,15 @@ final class GuestClipboardAgent: @unchecked Sendable {
 
     private func handleDeviceEOF() {
         Self.logger.notice("SPICE device closed (EOF)")
-        isConnected = false
+        disconnect()
+    }
+
+    /// Cancels polling, marks the connection as inactive, and notifies the caller.
+    private func disconnect() {
         pollingTimer?.cancel()
         pollingTimer = nil
+        deviceHandle.readabilityHandler = nil
+        isConnected = false
         onDisconnect?()
     }
 
@@ -140,8 +144,8 @@ final class GuestClipboardAgent: @unchecked Sendable {
     // MARK: - Message Handlers
 
     private func handleCapabilities(request: Bool, caps: [UInt32]) {
-        let hasClipboard = hasCapability(caps, .clipboard)
-        let byDemand = hasCapability(caps, .clipboardByDemand)
+        let hasClipboard = SpiceMessageBuilder.hasCapability(caps, .clipboard)
+        let byDemand = SpiceMessageBuilder.hasCapability(caps, .clipboardByDemand)
 
         guard hasClipboard || byDemand else {
             Self.logger.warning("Host does not support clipboard (caps: \(caps.map { String($0, radix: 16) }, privacy: .public))")
@@ -230,13 +234,13 @@ final class GuestClipboardAgent: @unchecked Sendable {
     }
 
     private func checkClipboardChange() {
+        guard isConnected else { return }
+
         let pasteboard = NSPasteboard.general
         let currentCount = pasteboard.changeCount
 
         guard currentCount != lastPasteboardChangeCount else { return }
         lastPasteboardChangeCount = currentCount
-
-        guard isConnected else { return }
 
         guard let text = pasteboard.string(forType: .string),
               !text.isEmpty else { return }
@@ -286,10 +290,7 @@ final class GuestClipboardAgent: @unchecked Sendable {
             return true
         } catch {
             Self.logger.error("Write to SPICE device failed: \(error.localizedDescription, privacy: .public)")
-            isConnected = false
-            pollingTimer?.cancel()
-            pollingTimer = nil
-            onDisconnect?()
+            disconnect()
             return false
         }
     }
@@ -303,12 +304,5 @@ final class GuestClipboardAgent: @unchecked Sendable {
         )
         writeToHost(message)
         Self.logger.debug("Sent ANNOUNCE_CAPABILITIES (request: \(request, privacy: .public))")
-    }
-
-    private func hasCapability(_ caps: [UInt32], _ cap: SpiceAgentCapability) -> Bool {
-        let wordIndex = cap.rawValue / 32
-        let bitIndex = cap.rawValue % 32
-        guard wordIndex < caps.count else { return false }
-        return (caps[wordIndex] & (1 << UInt32(bitIndex))) != 0
     }
 }

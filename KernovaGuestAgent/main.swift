@@ -89,7 +89,6 @@ func attemptConnection() {
     currentAgent = agent
     agent.onDisconnect = {
         logger.notice("Device disconnected, scheduling reconnect in \(retryInterval, privacy: .public)s")
-        currentAgent?.stop()
         currentAgent = nil
         DispatchQueue.main.asyncAfter(deadline: .now() + retryInterval) {
             attemptConnection()

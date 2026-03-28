@@ -17,6 +17,10 @@ enum SerialPortDiscovery {
         "/dev/cu.virtio",
     ]
 
+    // RATIONALE: nonisolated(unsafe) is safe here because openDevice() is only called
+    // from the main dispatch queue in main.swift's connection retry loop.
+    nonisolated(unsafe) private static var hasLoggedDevices = false
+
     /// Discovers and opens the SPICE agent serial device.
     ///
     /// Scans candidate paths, opens the first matching device with `O_RDWR | O_NOCTTY | O_NONBLOCK`,
@@ -24,17 +28,16 @@ enum SerialPortDiscovery {
     ///
     /// - Returns: A `FileHandle` wrapping the opened device, or `nil` if no device was found.
     static func openDevice() -> FileHandle? {
-        logAvailableSerialDevices()
+        if !hasLoggedDevices {
+            logAvailableSerialDevices()
+            hasLoggedDevices = true
+        }
 
         for path in candidatePaths {
-            guard FileManager.default.fileExists(atPath: path) else { continue }
-
             let fd = open(path, O_RDWR | O_NOCTTY | O_NONBLOCK)
             if fd >= 0 {
                 logger.notice("Opened SPICE device at '\(path, privacy: .public)' (fd=\(fd, privacy: .public))")
                 return FileHandle(fileDescriptor: fd, closeOnDealloc: true)
-            } else {
-                logger.warning("Found '\(path, privacy: .public)' but open() failed: \(String(cString: strerror(errno)), privacy: .public)")
             }
         }
 
