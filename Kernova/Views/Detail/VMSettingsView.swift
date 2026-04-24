@@ -47,26 +47,32 @@ struct VMSettingsView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 0) {
-                if isReadOnly {
-                    readOnlyBanner
-                        .padding(.horizontal)
-                        .padding(.top)
-                }
+        // Banner lives outside the ScrollView so it stays pinned at the top of the
+        // detail pane — keeps the "read-only" cue visible even when the form is scrolled.
+        VStack(spacing: 0) {
+            if isReadOnly {
+                readOnlyBanner
+                    .padding(.horizontal)
+                    .padding(.top)
+            }
+            ScrollView {
                 Form {
-                    generalSection
+                    // RATIONALE: `.disabled(isReadOnly)` is applied per section rather
+                    // than at the Form level so that informational popover triggers in
+                    // `resourcesSection` and `audioSection` (which handle their own
+                    // disabling per-control) remain interactive in read-only mode —
+                    // SwiftUI's disabled state propagates irreversibly to descendants.
+                    generalSection.disabled(isReadOnly)
                     resourcesSection
-                    storageDiskSection
-                    removableMediaSection
-                    sharedDirectoriesSection
-                    networkSection
+                    storageDiskSection.disabled(isReadOnly)
+                    removableMediaSection.disabled(isReadOnly)
+                    sharedDirectoriesSection.disabled(isReadOnly)
+                    networkSection.disabled(isReadOnly)
                     audioSection
-                    clipboardSection
+                    clipboardSection.disabled(isReadOnly)
                 }
                 .formStyle(.grouped)
                 .padding()
-                .disabled(isReadOnly)
             }
         }
         .onChange(of: instance.configuration) { _, _ in
@@ -334,13 +340,18 @@ struct VMSettingsView: View {
                 value: $instance.configuration.cpuCount,
                 in: os.minCPUCount...os.maxCPUCount
             )
+            .disabled(isReadOnly)
 
             Stepper(
                 "Memory: \(instance.configuration.memorySizeInGB) GB",
                 value: $instance.configuration.memorySizeInGB,
                 in: os.minMemoryInGB...os.maxMemoryInGB
             )
+            .disabled(isReadOnly)
 
+            // Disk Size row — the value is read-only everywhere (resize requires CLI);
+            // leaving the row un-disabled keeps the info-popover button tappable in
+            // read-only mode.
             LabeledContent {
                 HStack {
                     if let usage = instance.cachedDiskUsageBytes {
@@ -384,10 +395,14 @@ struct VMSettingsView: View {
     private var audioSection: some View {
         Section("Audio") {
             Toggle("Microphone", isOn: $instance.configuration.microphoneEnabled)
+                .disabled(isReadOnly)
             Text("Allows the guest to access the host microphone. Speaker output is always enabled.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
+            // Permission warning + info-popover button are left un-disabled so the
+            // explanation of how to re-enable the mic in System Settings remains
+            // reachable in read-only mode.
             if instance.configuration.microphoneEnabled {
                 if micPermission == .notDetermined {
                     Text("macOS will ask for microphone permission the first time a VM uses it.")

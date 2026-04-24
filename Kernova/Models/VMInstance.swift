@@ -244,6 +244,10 @@ final class VMInstance: Identifiable {
     func resetToStopped() {
         tearDownSession()
         status = .stopped
+        // The detail-pane toggle only makes sense while a display is live; reset
+        // so the next start lands on the display rather than inheriting a stuck
+        // settings-mode from the previous session.
+        detailPaneMode = .display
     }
 
     /// Creates a VZVirtualMachine, assigns it, and wires up the delegate. Returns the VM.

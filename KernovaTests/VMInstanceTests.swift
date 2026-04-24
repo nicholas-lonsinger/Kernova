@@ -35,6 +35,17 @@ struct VMInstanceTests {
         #expect(b.detailPaneMode == .display)
     }
 
+    @Test("resetToStopped clears detailPaneMode back to .display")
+    func resetToStoppedClearsDetailPaneMode() {
+        let instance = makeInstance(status: .running)
+        instance.detailPaneMode = .settings
+
+        instance.resetToStopped()
+
+        #expect(instance.detailPaneMode == .display)
+        #expect(instance.status == .stopped)
+    }
+
     // MARK: - tearDownSession
 
     @Test("tearDownSession clears pipes and virtualMachine without changing status")
