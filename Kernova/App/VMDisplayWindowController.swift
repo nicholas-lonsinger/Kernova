@@ -97,6 +97,7 @@ final class VMDisplayWindowController: NSWindowController, NSWindowDelegate {
             lastDisplayID = window?.screen?.displayID
         }
         instanceObservation?.cancel()
+        instanceObservation = nil
         window?.toolbar?.isVisible = true
         instance.displayMode = .inline
     }

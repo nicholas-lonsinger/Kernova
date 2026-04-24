@@ -60,6 +60,7 @@ final class ClipboardWindowController: NSWindowController, NSWindowDelegate {
             instance.clipboardService?.grabIfChanged()
         }
         statusObservation?.cancel()
+        statusObservation = nil
         Self.logger.debug("Clipboard window closing for VM '\(self.instance.name, privacy: .public)'")
     }
 

@@ -56,6 +56,7 @@ final class SerialConsoleWindowController: NSWindowController, NSWindowDelegate 
 
     func windowWillClose(_ notification: Notification) {
         statusObservation?.cancel()
+        statusObservation = nil
         Self.logger.debug("Serial console window closing for VM '\(self.instance.name, privacy: .public)'")
     }
 
