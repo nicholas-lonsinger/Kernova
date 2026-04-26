@@ -102,7 +102,9 @@ private struct LifecycleAlerts: ViewModifier {
                 Button(vm.isColdPaused ? "Discard" : "Force Stop", role: .destructive) {
                     Task { await viewModel.forceStopConfirmed(vm) }
                 }
-                if vm.canStop {
+                // Paused VMs route through the dedicated "Stop Paused" alert instead;
+                // showing "Shut Down" here would chain a second alert on top of this one.
+                if vm.canStop && vm.status != .paused {
                     Button("Shut Down") {
                         viewModel.stop(vm)
                     }
@@ -123,6 +125,11 @@ private struct LifecycleAlerts: ViewModifier {
                 Button("Resume and Shut Down") {
                     Task { await viewModel.resumeAndStop(vm) }
                 }
+                // RATIONALE: This alert is itself a confirmation step, so
+                // "Force Stop" intentionally calls forceStop directly rather
+                // than routing through confirmForceStop and stacking a second
+                // alert. The message text below makes the destructive nature
+                // explicit so one confirmation is sufficient.
                 Button("Force Stop", role: .destructive) {
                     Task { await viewModel.forceStop(vm) }
                 }

@@ -259,6 +259,12 @@ final class VMLibraryViewModel {
 
     /// Resumes a paused VM then requests a graceful ACPI shutdown. Used by the
     /// stop-paused confirmation sheet's "Resume and Shut Down" action.
+    ///
+    /// Note: `lifecycle.resume` is serialized through the lifecycle coordinator,
+    /// but `lifecycle.stop` deliberately bypasses serialization (so users can
+    /// always interrupt a hung op). The two calls are therefore not atomic; in
+    /// practice the UI gates lifecycle buttons during transitions, so an
+    /// interleaved op is not reachable through normal user input.
     func resumeAndStop(_ instance: VMInstance) async {
         do {
             try await lifecycle.resume(instance)
