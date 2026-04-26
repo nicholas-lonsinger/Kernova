@@ -357,6 +357,49 @@ struct VMLibraryViewModelTests {
         #expect(viewModel.errorMessage != nil)
     }
 
+    // MARK: - Stop Paused Confirmation
+
+    @Test("resumeAndStop dispatches resume then stop")
+    func resumeAndStopDispatches() async {
+        let (viewModel, _, _, virtService) = makeViewModel()
+        let instance = makeInstance()
+        instance.status = .paused
+        viewModel.instances.append(instance)
+
+        await viewModel.resumeAndStop(instance)
+
+        #expect(virtService.resumeCallCount == 1)
+        #expect(virtService.stopCallCount == 1)
+    }
+
+    @Test("resumeAndStop presents error if resume fails")
+    func resumeAndStopPresentsErrorOnResumeFailure() async {
+        let virtService = MockVirtualizationService()
+        virtService.resumeError = VirtualizationError.noVirtualMachine
+        let (viewModel, _, _, _) = makeViewModel(virtualizationService: virtService)
+        let instance = makeInstance()
+        instance.status = .paused
+
+        await viewModel.resumeAndStop(instance)
+
+        #expect(viewModel.showError == true)
+        #expect(virtService.stopCallCount == 0)
+    }
+
+    @Test("stop on running VM still delegates directly without confirmation")
+    func stopRunningSkipsConfirmation() {
+        let (viewModel, _, _, virtService) = makeViewModel()
+        let instance = makeInstance()
+        instance.status = .running
+        viewModel.instances.append(instance)
+
+        viewModel.stop(instance)
+
+        #expect(virtService.stopCallCount == 1)
+        #expect(viewModel.showStopPausedConfirmation == false)
+        #expect(viewModel.instanceToStopPaused == nil)
+    }
+
     @Test("pause presents error on service failure")
     func pausePresentsError() async {
         let virtService = MockVirtualizationService()

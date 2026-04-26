@@ -40,6 +40,8 @@ final class VMLibraryViewModel {
     var preparingInstanceToCancel: VMInstance?
     var showForceStopConfirmation = false
     var instanceToForceStop: VMInstance?
+    var showStopPausedConfirmation = false
+    var instanceToStopPaused: VMInstance?
 
     /// `true` when any instance is mid-clone or mid-import.
     var hasPreparing: Bool { instances.contains(where: \.isPreparing) }
@@ -240,10 +242,29 @@ final class VMLibraryViewModel {
     }
 
     func stop(_ instance: VMInstance) {
+        // VZ rejects requestStop() on paused VMs ("Invalid virtual machine state").
+        // Surface a confirmation sheet offering resume-and-shutdown or force-stop instead.
+        if instance.status == .paused && !instance.isColdPaused {
+            instanceToStopPaused = instance
+            showStopPausedConfirmation = true
+            return
+        }
         do {
             try lifecycle.stop(instance)
         } catch {
             Self.logger.error("Failed to stop '\(instance.name, privacy: .public)': \(error.localizedDescription, privacy: .public)")
+            presentError(error)
+        }
+    }
+
+    /// Resumes a paused VM then requests a graceful ACPI shutdown. Used by the
+    /// stop-paused confirmation sheet's "Resume and Shut Down" action.
+    func resumeAndStop(_ instance: VMInstance) async {
+        do {
+            try await lifecycle.resume(instance)
+            try lifecycle.stop(instance)
+        } catch {
+            Self.logger.error("Failed to resume-and-stop '\(instance.name, privacy: .public)': \(error.localizedDescription, privacy: .public)")
             presentError(error)
         }
     }
